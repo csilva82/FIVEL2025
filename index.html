@@ -1,575 +1,418 @@
-  <!DOCTYPE html>
-  <html lang="pt-BR">
-  <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Feira FIVEL 2025 - 3D Interativa</title>
-  <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; background: #000; cursor: default; }
-  canvas { display: block; cursor: crosshair; }
-  body.modal-open canvas { cursor: default; }
-  #ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-  #controls-info { position: absolute; top: 20px; left: 20px; background: rgba(0, 0, 0, 0.8); color: white; padding: 20px; border-radius: 10px; font-size: 14px; line-height: 1.6; max-width: 300px; backdrop-filter: blur(10px); }
-  #controls-info h3 { margin-bottom: 10px; color: #4CAF50; }
-  #controls-info kbd { background: #333; padding: 3px 8px; border-radius: 4px; font-family: monospace; font-size: 12px; border: 1px solid #555; }
-  #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 20px; height: 20px; pointer-events: none; }
-  #crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(255, 255, 255, 0.8); }
-  #crosshair::before { top: 50%; left: 0; width: 100%; height: 2px; transform: translateY(-50%); }
-  #crosshair::after { left: 50%; top: 0; width: 2px; height: 100%; transform: translateX(-50%); }
-  #hover-info { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); background: rgba(76, 175, 80, 0.95); color: white; padding: 15px 30px; border-radius: 25px; font-size: 18px; font-weight: bold; opacity: 0; transition: opacity 0.3s; pointer-events: none; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4); }
-  #hover-info.visible { opacity: 1; }
-  #minimap { position: absolute; top: 20px; right: 20px; width: 300px; height: 200px; background: rgba(0, 0, 0, 0.9); border: 3px solid #4CAF50; border-radius: 10px; pointer-events: all; cursor: pointer; backdrop-filter: blur(10px); }
-  #minimap-title { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); color: #4CAF50; font-size: 13px; font-weight: bold; pointer-events: none; z-index: 10; }
-  #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 24px; background: rgba(0, 0, 0, 0.9); padding: 30px 50px; border-radius: 15px; text-align: center; }
-  .hidden { display: none !important; }
-  #instructions { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.95); color: white; padding: 40px; border-radius: 15px; text-align: center; max-width: 500px; pointer-events: all; }
-  #instructions h2 { color: #4CAF50; margin-bottom: 20px; }
-  #instructions button { background: #4CAF50; color: white; border: none; padding: 15px 40px; font-size: 18px; border-radius: 25px; cursor: pointer; margin-top: 20px; transition: background 0.3s; }
-  #instructions button:hover { background: #45a049; }
-  #custom-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); display: flex; align-items: center; justify-content: center; pointer-events: all; z-index: 1000; }
-  #modal-content { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; border-radius: 20px; text-align: center; max-width: 500px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); animation: modalSlideIn 0.3s ease-out; }
-  @keyframes modalSlideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-  #modal-content h3 { color: white; font-size: 24px; margin-bottom: 15px; }
-  #modal-content p { color: rgba(255, 255, 255, 0.9); font-size: 16px; margin-bottom: 10px; }
-  #modal-content .url-display { background: rgba(0, 0, 0, 0.3); padding: 10px; border-radius: 8px; color: #fff; font-family: monospace; font-size: 14px; margin: 20px 0; word-break: break-all; }
-  #modal-buttons { display: flex; gap: 15px; justify-content: center; margin-top: 25px; }
-  #modal-buttons button { padding: 12px 30px; font-size: 16px; border: none; border-radius: 25px; cursor: pointer; font-weight: bold; transition: all 0.3s; text-transform: uppercase; letter-spacing: 1px; }
-  #modal-visit { background: #4CAF50; color: white; }
-  #modal-visit:hover { background: #45a049; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4); }
-  #modal-cancel { background: rgba(255, 255, 255, 0.2); color: white; }
-  #modal-cancel:hover { background: rgba(255, 255, 255, 0.3); transform: translateY(-2px); }
-  </style>
-  </head>
-  <body>
-  <div id="loading">Carregando Feira FIVEL 2025...</div>
-  <div id="instructions">
-    <h2>🎪 Bem-vindo à FIVEL 2025!</h2>
-    <p style="margin: 20px 0;">Navegue pela feira virtual e clique nos estandes para visitar os sites dos expositores.</p>
-    <p style="font-size: 14px; color: #ccc;">Use WASD ou setas para se mover, mouse para olhar ao redor.</p>
-    <button id="start-btn">Entrar na Feira</button>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feira FIVEL 2025 - Mobile</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', sans-serif; overflow: hidden; background: #000; }
+canvas { display: block; }
+#ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+#controls-info { position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.8); color: white; padding: 20px; border-radius: 10px; font-size: 14px; max-width: 300px; }
+#controls-info h3 { margin-bottom: 10px; color: #4CAF50; }
+#crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 20px; height: 20px; pointer-events: none; }
+#crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(255,255,255,0.8); }
+#crosshair::before { top: 50%; left: 0; width: 100%; height: 2px; transform: translateY(-50%); }
+#crosshair::after { left: 50%; top: 0; width: 2px; height: 100%; transform: translateX(-50%); }
+#hover-info { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); background: rgba(76,175,80,0.95); color: white; padding: 15px 30px; border-radius: 25px; font-size: 18px; font-weight: bold; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+#hover-info.visible { opacity: 1; }
+#minimap { position: absolute; top: 20px; right: 20px; width: 300px; height: 200px; background: rgba(0,0,0,0.9); border: 3px solid #4CAF50; border-radius: 10px; pointer-events: all; cursor: pointer; }
+#minimap-title { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); color: #4CAF50; font-size: 13px; font-weight: bold; z-index: 10; }
+#loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: white; font-size: 24px; background: rgba(0,0,0,0.9); padding: 30px 50px; border-radius: 15px; }
+.hidden { display: none !important; }
+#instructions { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,0.95); color: white; padding: 40px; border-radius: 15px; text-align: center; max-width: 500px; pointer-events: all; }
+#instructions h2 { color: #4CAF50; margin-bottom: 20px; }
+#instructions button { background: #4CAF50; color: white; border: none; padding: 15px 40px; font-size: 18px; border-radius: 25px; cursor: pointer; margin-top: 20px; }
+#custom-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; pointer-events: all; z-index: 1000; }
+#modal-content { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; border-radius: 20px; text-align: center; max-width: 500px; }
+#modal-content h3 { color: white; font-size: 24px; margin-bottom: 15px; }
+#modal-content p { color: rgba(255,255,255,0.9); font-size: 16px; margin-bottom: 10px; }
+.url-display { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; color: #fff; font-family: monospace; font-size: 14px; margin: 20px 0; word-break: break-all; }
+#modal-buttons { display: flex; gap: 15px; justify-content: center; margin-top: 25px; }
+#modal-buttons button { padding: 12px 30px; font-size: 16px; border: none; border-radius: 25px; cursor: pointer; font-weight: bold; }
+#modal-visit { background: #4CAF50; color: white; }
+#modal-cancel { background: rgba(255,255,255,0.2); color: white; }
+#mobile-controls { position: absolute; bottom: 20px; left: 20px; display: none; pointer-events: all; z-index: 100; }
+#mobile-controls.active { display: block; }
+.control-pad { position: relative; width: 150px; height: 150px; }
+.control-btn { position: absolute; width: 50px; height: 50px; background: rgba(76,175,80,0.7); border: 2px solid rgba(255,255,255,0.8); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; user-select: none; touch-action: none; }
+.control-btn:active { background: rgba(76,175,80,0.95); transform: scale(0.95); }
+.control-btn.up { top: 0; left: 50%; transform: translateX(-50%); }
+.control-btn.down { bottom: 0; left: 50%; transform: translateX(-50%); }
+.control-btn.left { top: 50%; left: 0; transform: translateY(-50%); }
+.control-btn.right { top: 50%; right: 0; transform: translateY(-50%); }
+#look-controls { position: absolute; bottom: 20px; right: 20px; display: none; pointer-events: all; z-index: 100; }
+#look-controls.active { display: block; }
+.look-pad { position: relative; width: 150px; height: 150px; background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; touch-action: none; }
+.look-indicator { position: absolute; width: 30px; height: 30px; background: rgba(255,255,255,0.8); border: 2px solid #4CAF50; border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%,-50%); pointer-events: none; }
+.look-label { position: absolute; top: -25px; left: 50%; transform: translateX(-50%); color: white; font-size: 12px; font-weight: bold; }
+@media (max-width: 768px) {
+  #controls-info { display: none; }
+  #minimap { top: 10px; right: 10px; width: 200px; height: 133px; }
+  #hover-info { bottom: 200px; font-size: 14px; padding: 10px 20px; }
+}
+</style>
+</head>
+<body>
+<div id="loading">Carregando Feira FIVEL 2025...</div>
+<div id="instructions">
+  <h2>🎪 Bem-vindo à FIVEL 2025!</h2>
+  <p style="margin: 20px 0;">Navegue pela feira virtual e clique nos estandes.</p>
+  <p style="font-size: 14px; color: #ccc;">Use controles na tela ou WASD para mover.</p>
+  <button id="start-btn">Entrar na Feira</button>
+</div>
+<div id="ui-overlay">
+  <div id="controls-info">
+    <h3>⌨️ Controles</h3>
+    <div>WASD - Mover</div>
+    <div>Mouse - Olhar</div>
+    <div>Click - Interagir</div>
   </div>
-  <div id="ui-overlay">
-    <div id="controls-info">
-      <h3>⌨️ Controles</h3>
-      <div><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> - Mover</div>
-      <div><kbd>↑</kbd> <kbd>←</kbd> <kbd>↓</kbd> <kbd>→</kbd> - Mover</div>
-      <div><kbd>Mouse</kbd> - Olhar</div>
-      <div><kbd>Click</kbd> - Interagir</div>
-      <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #333;"><kbd>ESC</kbd> - Sair da feira</div>
+  <div id="crosshair"></div>
+  <div id="hover-info">🖱️ Clique para visitar</div>
+  <div id="minimap"><div id="minimap-title">🗺️ MAPA</div></div>
+</div>
+<div id="custom-modal" class="hidden">
+  <div id="modal-content">
+    <h3>🌐 Visitar Site</h3>
+    <p id="modal-text">Deseja visitar o site?</p>
+    <div class="url-display" id="modal-url"></div>
+    <div id="modal-buttons">
+      <button id="modal-visit">✓ Visitar</button>
+      <button id="modal-cancel">✕ Cancelar</button>
     </div>
-    <div id="crosshair"></div>
-    <div id="hover-info">🖱️ Clique para visitar</div>
-    <div id="minimap"><div id="minimap-title">🗺️ MAPA DA FEIRA </div></div>
   </div>
-  <div id="custom-modal" class="hidden">
-    <div id="modal-content">
-      <h3>🌐 Visitar Site</h3>
-      <p id="modal-text">Deseja visitar o site deste estande?</p>
-      <div class="url-display" id="modal-url"></div>
-      <div id="modal-buttons">
-        <button id="modal-visit">✓ Visitar</button>
-        <button id="modal-cancel">✕ Cancelar</button>
-      </div>
-    </div>
+</div>
+<div id="mobile-controls">
+  <div class="control-pad">
+    <div class="control-btn up" data-key="w">▲</div>
+    <div class="control-btn down" data-key="s">▼</div>
+    <div class="control-btn left" data-key="a">◄</div>
+    <div class="control-btn right" data-key="d">►</div>
   </div>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script>
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x87ceeb);
-  scene.fog = new THREE.Fog(0x87ceeb, 0, 120);
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.set(-32, 1.7, -25);
-  const initialEuler = new THREE.Euler(0, Math.PI, 0, 'YXZ');
-  camera.quaternion.setFromEuler(initialEuler);
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  document.body.appendChild(renderer.domElement);
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-  scene.add(ambientLight);
-  const sun = new THREE.DirectionalLight(0xffffff, 0.8);
-  sun.position.set(30, 40, 30);
-  sun.castShadow = true;
-  sun.shadow.mapSize.width = 2048;
-  sun.shadow.mapSize.height = 2048;
-  sun.shadow.camera.near = 0.5;
-  sun.shadow.camera.far = 150;
-  sun.shadow.camera.left = -80;
-  sun.shadow.camera.right = 80;
-  sun.shadow.camera.top = 80;
-  sun.shadow.camera.bottom = -80;
-  scene.add(sun);
-  const floorGeometry = new THREE.PlaneGeometry(200, 150);
-  const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.8, metalness: 0.2 });
-  const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-  floor.rotation.x = -Math.PI / 2;
-  floor.receiveShadow = true;
-  scene.add(floor);
-  const gridHelper = new THREE.GridHelper(200, 100, 0xcccccc, 0xe0e0e0);
-  scene.add(gridHelper);
-  const fairBoundaryGeometry = new THREE.BoxGeometry(80, 0.5, 60);
-
-  const floorAreaGeometry = new THREE.PlaneGeometry(80, 60);
-  const floorAreaMaterial = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.8, metalness: 0.2 });
-  const floorArea = new THREE.Mesh(floorAreaGeometry, floorAreaMaterial);
-  floorArea.rotation.x = -Math.PI / 2;
-  floorArea.position.set(0, 0.01, -5); // z = -5 é o deslocamento do quadrado
-  floorArea.receiveShadow = true;
-  scene.add(floorArea);
-
-  const edgesGeometry = new THREE.EdgesGeometry(fairBoundaryGeometry);
-  const edgesMaterial = new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 3 });
-  const fairEdges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
-  fairEdges.position.set(0, 0.25, -5);
-  scene.add(fairEdges);
-  function createCorridorLine(x1, z1, x2, z2) {
-    const points = [new THREE.Vector3(x1, 0.05, z1), new THREE.Vector3(x2, 0.05, z2)];
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const material = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 4 });
-    const line = new THREE.Line(geometry, material);
-    scene.add(line);
-    const distance = Math.sqrt((x2-x1)**2 + (z2-z1)**2);
-    const angle = Math.atan2(x2-x1, z2-z1);
-    const corridorGeometry = new THREE.PlaneGeometry(0.8, distance); 
-    const corridorMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.8 });
-    const corridor = new THREE.Mesh(corridorGeometry, corridorMaterial);
-    corridor.rotation.x = -Math.PI / 2;
-    corridor.rotation.z = angle;
-    corridor.position.set((x1+x2)/2, 0.02, (z1+z2)/2);
-    scene.add(corridor);
-  }
-  //createCorridorLine(-29, -20, -29, 10);
-  //createCorridorLine(-23, -20, -23, 10);
-  //createCorridorLine(-17, -20, -17, 10);
-  //createCorridorLine(-11, -20, -11, 10);
-  //createCorridorLine(-5, -20, -5, 10);
-  //createCorridorLine(1, -20, 1, 10);
-  //createCorridorLine(9, -20, 9, 10);
-  //createCorridorLine(15, -20, 15, 10);
-  //createCorridorLine(-35, -17, 20, -17);
-  //createCorridorLine(-35, -4, 20, -4);
-  //createCorridorLine(-35, 9, 20, 9);
-  //createCorridorLine(-32, -25, -32, -17);
-  const interactiveStands = [];
-  const standPositions = [];
-  function createStand(x, z, width, depth, color, label, url) {
-    const group = new THREE.Group();
-    const baseGeometry = new THREE.BoxGeometry(width, 0.2, depth);
-    const baseMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
-    const base = new THREE.Mesh(baseGeometry, baseMaterial);
-    base.position.y = 0.1;
-    base.receiveShadow = true;
-    group.add(base);
-    const wallGeometry = new THREE.BoxGeometry(width, 3, 0.2);
-    const wallMaterial = new THREE.MeshStandardMaterial({ color: color });
-    const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-    wall.position.set(0, 1.5, depth/2 - 0.1);
-    wall.castShadow = true;
-    wall.receiveShadow = true;
-    group.add(wall);
-    const roofGeometry = new THREE.BoxGeometry(width, 0.2, depth);
-    const roofMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
-    const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-    roof.position.y = 3;
-    roof.castShadow = true;
-    group.add(roof);
-    const pillarGeometry = new THREE.BoxGeometry(0.2, 3, 0.2);
-    const pillarMaterial = new THREE.MeshStandardMaterial({ color: 0x666666 });
-    const positions = [[-width/2+0.1,1.5,depth/2-0.1],[width/2-0.1,1.5,depth/2-0.1],[-width/2+0.1,1.5,-depth/2+0.1],[width/2-0.1,1.5,-depth/2+0.1]];
-    positions.forEach(pos => {
-      const pillar = new THREE.Mesh(pillarGeometry, pillarMaterial);
-      pillar.position.set(...pos);
-      pillar.castShadow = true;
-      group.add(pillar);
-    });
-    const panelGeometry = new THREE.BoxGeometry(width-0.5, 2.5, 0.1);
-    const panelMaterial = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.3 });
-    const panel = new THREE.Mesh(panelGeometry, panelMaterial);
-    panel.position.set(0, 1.5, depth/2-0.15);
-    panel.userData = { interactive: true, url: url, label: label, originalColor: color };
-    group.add(panel);
-    interactiveStands.push(panel);
-    standPositions.push({x:x,z:z,width:width,depth:depth,color:color,label:label});
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 256;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 512, 256);
-    ctx.fillStyle = '#000000';
-    ctx.font = 'bold 40px Arial';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(label, 256, 128);
-    const texture = new THREE.CanvasTexture(canvas);
-    const signMaterial = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
-    const signWidth = Math.min(width*0.8, 3.5);
-    const signGeometry = new THREE.PlaneGeometry(signWidth, signWidth*0.5);
-    const sign = new THREE.Mesh(signGeometry, signMaterial);
-    sign.position.set(0, 2.2, depth/2-0.25);
-    sign.rotation.y = Math.PI;
-    group.add(sign);
-    group.position.set(x, 0, z);
-    scene.add(group);
-    return group;
-  }
-
-  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>createStand
-  // createStand(x, z, width, depth, color, label, url)
-  const senaiStand = createStand(
-    0,       // X: posição horizontal no mapa (esquerda/direita)
-    -25,     // Z: posição vertical no mapa (profundidade, negativo = para trás)
-    16,      // Width: largura do estande
-    4,       // Depth: profundidade do estande
-    0x2c3e50,// Color: cor do estande
-    'FIEMG e SENAI', // Label do estande
-    'https://fiemg.com.br' // URL do site
-  );
-  //O eixo Y é sempre altura (0 no chão).
-  //O grupo é posicionado com group.position.set(x, 0, z).
-  //width → largura ao longo do eixo X
-  //depth → profundidade ao longo do eixo Z
-  // Rotaciona o stand no eixo Y (vertical)
-
-  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Rotação
-  senaiStand.rotation.y = Math.PI;        // gira 180° (inverter frente e trás)
-  //senaiStand.rotation.y = Math.PI / 2;    // gira 90° para a direita
-  //senaiStand.rotation.y = -Math.PI / 2;   // gira 90° para a esquerda
-  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Espelhamento
-  // Espelhamento horizontal (X)
-  //senaiStand.scale.x = -1; 
-  // Espelhamento vertical (Z)
-  //senaiStand.scale.z = -1;
-
-  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Posicionamento X/Z
-  // Posicionamento X/Z
-  //senaiStand.position.x = 5;   // mover para a direita
-  //senaiStand.position.z = -20; // mover para frente/trás
-
-  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  Ajuste de altura
-  //Ajuste de altura
-  //senaiStand.position.y = 0.1; // elevação do chão (por exemplo, para evitar colisão com o piso)
-
-  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Escala
-  //Escala
-  //senaiStand.scale.set(1, 1, 1);   // tamanho normal
-  //senaiStand.scale.set(2, 1, 1);   // dobra a largura
-  //senaiStand.scale.set(1, 2, 1);   // dobra a altura
-  //senaiStand.scale.set(1, 1, 0.5); // metade da profundidade
-
-  //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Mudança de cor dinâmica
-  // Mudar cor do painel principal
-  //senaiStand.children.forEach(child => {
-  //  if (child.material) child.material.color.set(0xff0000); // vermelho
-  //});
-
-
-
-
-  createStand(-32,-20,3,4,0xffe600,'Credenciamento','https://www.fivel.com.br');
-  createStand(-32,-14,3,3,0xff6b6b,'Meta Gil','https://www.metagil.com.br');
-  createStand(-32,-10,3,3,0x4ecdc4,'Win Point','https://www.winpoint.com.br');
-  createStand(-32,-6,3,3,0xffe66d,'IDET','https://www.idet.com.br');
-  createStand(-32,-2,3,3,0x95e1d3,'Stradi','https://www.stradi.com.br');
-  createStand(-32,3,3,5,0xf38181,'Davi Araújo','https://www.daviaraujo.com.br');
-  createStand(-26,-14,3,3,0xaa96da,'TDM','https://www.tdm.com.br');
-  createStand(-26,-10,3,3,0xff9999,'TSZU','https://www.tszu.com.br');
-  createStand(-26,-6,3,3,0x66ccff,'TEHAL','https://www.tehal.com.br');
-  createStand(-26,-2,3,3,0xffcc66,'ALPHA RÚSSIA','https://www.alpharussia.com.br');
-  createStand(-26,2,3,3,0x99ff99,'AMICUS','https://www.amicus.com.br');
-  createStand(-20,-14,3,3,0xff66cc,'Trivale','https://www.trivale.com.br');
-  createStand(-20,-10,3,3,0xccff66,'Qualitronalt','https://www.qualitronalt.com.br');
-  createStand(-20,-6,3,3,0x66ffcc,'GMC','https://www.gmc.com.br');
-  createStand(-20,-2,3,3,0xff6699,'Magneton','https://www.magneton.com.br');
-  createStand(-20,2,3,3,0x9966ff,'Enterplak','https://www.enterplak.com.br');
-  createStand(-20,6,3,3,0x66ff99,'RW','https://www.rw.com.br');                   //
-  createStand(-14,-14,3,3,0xffaa66,'Sensodron','https://www.sensodron.com.br');
-  createStand(-14,-10,3,3,0xaa66ff,'RIA Galerari','https://www.riagalerari.com.br');
-  createStand(-14,-6,3,3,0x66aaff,'ALPHA Pro','https://www.alphapro.com.br');
-  createStand(-14,-2,3,3,0xffcc99,'Gráfica','https://www.grafica.com.br');
-  createStand(-14,2,3,3,0x99ccff,'Wrathbear','https://www.wrathbear.com.br');
-  createStand(-14,6,3,3,0xff9966,'FGM','https://www.fgm.com.br');
-  createStand(-8,-14,3,3,0xccaa66,'JK','https://www.jk.com.br');
-  createStand(-8,-6,3,9,0x66ccaa,'Sense','https://www.sense.com.br');
-  createStand(-2,-1,3,5,0xff6666,'Fractum','https://www.fractum.com.br'); //
-  createStand(-2,5,3,5,0x6666ff,'Novoligo','https://www.novoligo.com.br'); //
-  createStand(6,-10,3,3,0x66ff66,'Ri Beckman','https://www.ribeckman.com.br');
-  createStand(6,-6,3,3,0xffff66,'Tamura','https://www.tamura.com.br');
-  createStand(6,-2,3,3,0x66ffff,'ABT Techniquitel','https://www.abttechniquitel.com.br');
-  createStand(6,2,3,3,0xff66ff,'ACEVALE','https://www.acevale.com.br');
-  createStand(12,-10,3,3,0x99aa66,'Linear DEMINI','https://www.lineardemini.com.br');
-  createStand(12,-6,3,3,0xaa9966,'Alarmes SRS','https://www.alarmessrs.com.br');
-  createStand(12,-2,3,3,0x6699aa,'Sistron','https://www.sistron.com.br');
-  createStand(12,2,3,3,0xaa6699,'Triunfo','https://www.triunfo.com.br');
-  createStand(12,6,3,3,0x996699,'Panasonic','https://www.panasonic.com.br');
-  createStand(18,-6,3,3,0x996666,'Fuji','https://www.fuji.com.br');
-  createStand(18,-2,3,3,0x669966,'Eburlas','https://www.eburlas.com.br');
-  createStand(18,2,3,3,0x666699,'EPS','https://www.eps.com.br');
-  createStand(25,-20,8,6,0x34495e,'ESPAÇO CIDADE CRIATIVA','https://www.espacocidadecriativa.com.br');
-  createStand(25,-10,8,6,0x16a085,'SINDVEL SEBRAE','https://www.sindvel.com.br');
-  createStand(32,0,10,8,0x8e44ad,'Rodadas de Negócios','https://www.fivel.com.br/rodadas');
-  createStand(-28,12,4,3,0xe74c3c,'FEnix','https://www.fenix.com.br');
-  createStand(-24,12,3,3,0x3498db,'Pixel','https://www.pixel.com.br');
-  createStand(-20,12,3,3,0xf39c12,'IPESI','https://www.ipesi.com.br');
-  createStand(-16,12,3,3,0x2ecc71,'LC','https://www.lc.com.br');
-  createStand(-12,12,3,3,0x9b59b6,'AMS','https://www.ams.com.br');
-  createStand(-8,12,3,3,0xe67e22,'INATEL','https://www.inatel.br');
-  createStand(-4,12,3,3,0x1abc9c,'Tech Lab','https://www.techlab.com.br');
-  createStand(0,12,3,3,0xd35400,'NaHub','https://www.nahub.com.br');
-  createStand(4,12,3,3,0x27ae60,'Alpha Tech','https://www.alphatech.com.br');
-  createStand(10,12,12,3,0x2c3e50,'Incubadoras Municipal','https://www.incubadoras.com.br');
-  createStand(24,12,12,3,0x34495e,'SINDICATO RURAL','https://www.sindicatorural.com.br');
-
-
-  const raycaster = new THREE.Raycaster();
-  let hoveredObject = null;
-  const moveSpeed = 0.15;
-  const keys = {w:false,a:false,s:false,d:false,arrowup:false,arrowdown:false,arrowleft:false,arrowright:false};
-  let isPointerLocked = false;
-  const euler = new THREE.Euler(0, 0, 0, 'YXZ');
-  const PI_2 = Math.PI / 2;
-  document.addEventListener('keydown', (e) => {
-    const key = e.key.toLowerCase();
-    if (e.key === 'Escape' && !isPointerLocked) {
-      if (confirm('Deseja realmente sair da Feira Virtual?')) {
-        window.close();
-        setTimeout(() => { if (!window.closed) { window.history.back(); setTimeout(() => window.location.href = 'about:blank', 100); } }, 100);
-      }
-      return;
-    }
-    if (keys.hasOwnProperty(key)) keys[key] = true;
-  });
-  document.addEventListener('keyup', (e) => {
-    const key = e.key.toLowerCase();
-    if (keys.hasOwnProperty(key)) keys[key] = false;
-  });
-  const startBtn = document.getElementById('start-btn');
-  const instructions = document.getElementById('instructions');
-  const loading = document.getElementById('loading');
-  startBtn.addEventListener('click', () => {
-    instructions.classList.add('hidden');
-    renderer.domElement.requestPointerLock();
-  });
-  document.addEventListener('pointerlockchange', () => {
-    const wasLocked = isPointerLocked;
-    isPointerLocked = document.pointerLockElement === renderer.domElement;
-    if (wasLocked && !isPointerLocked && customModal.classList.contains('hidden')) {
-      Object.keys(keys).forEach(key => keys[key] = false);
-    }
-  });
-  renderer.domElement.addEventListener('contextmenu', (e) => { e.preventDefault(); return false; });
-  document.addEventListener('mousemove', (e) => {
-    if (!isPointerLocked) return;
-    const movementX = e.movementX || 0;
-    const movementY = e.movementY || 0;
-    euler.setFromQuaternion(camera.quaternion);
-    euler.y -= movementX * 0.002;
-    euler.x -= movementY * 0.002;
-    euler.x = Math.max(-PI_2, Math.min(PI_2, euler.x));
-    camera.quaternion.setFromEuler(euler);
-  });
-  const customModal = document.getElementById('custom-modal');
-  const modalText = document.getElementById('modal-text');
-  const modalUrl = document.getElementById('modal-url');
-  const modalVisit = document.getElementById('modal-visit');
-  const modalCancel = document.getElementById('modal-cancel');
-  let pendingUrl = null;
-  let pendingLabel = null;
-  function showModal(label, url) {
-    pendingUrl = url;
-    pendingLabel = label;
-    modalText.textContent = `Deseja visitar o site do ${label}?`;
-    modalUrl.textContent = url;
-    customModal.classList.remove('hidden');
-    document.body.classList.add('modal-open');
-    if (document.pointerLockElement) document.exitPointerLock();
-  }
-  function hideModal() {
-    customModal.classList.add('hidden');
-    pendingUrl = null;
-    pendingLabel = null;
-    document.body.classList.remove('modal-open');
-    setTimeout(() => renderer.domElement.requestPointerLock(), 10);
-  }
-  modalVisit.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (pendingUrl) window.open(pendingUrl, '_blank');
-    hideModal();
-  });
-  modalCancel.addEventListener('click', (e) => { e.stopPropagation(); hideModal(); });
-  const hoverInfo = document.getElementById('hover-info');
-  function updateRaycaster() {
-    raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-    const intersects = raycaster.intersectObjects(interactiveStands);
-    if (intersects.length > 0) {
-      const object = intersects[0].object;
-      if (hoveredObject !== object) {
-        if (hoveredObject) hoveredObject.material.opacity = 0.3;
-        hoveredObject = object;
-        hoveredObject.material.opacity = 0.6;
-        hoverInfo.textContent = `🖱️ Clique para visitar: ${object.userData.label}`;
-        hoverInfo.classList.add('visible');
-      }
-    } else {
-      if (hoveredObject) { hoveredObject.material.opacity = 0.3; hoveredObject = null; }
-      hoverInfo.classList.remove('visible');
-    }
-  }
-  document.addEventListener('click', (e) => {
-    if (!isPointerLocked || e.button !== 0) return;
-    if (hoveredObject && hoveredObject.userData.url) {
-      showModal(hoveredObject.userData.label, hoveredObject.userData.url);
-    }
-  });
-  function updateMovement() {
-    if (!isPointerLocked) return;
-    const direction = new THREE.Vector3();
-    const right = new THREE.Vector3();
-    camera.getWorldDirection(direction);
-    direction.y = 0;
-    direction.normalize();
-    right.crossVectors(camera.up, direction).normalize();
-    const velocity = new THREE.Vector3();
-    if (keys.w || keys.arrowup) velocity.add(direction);
-    if (keys.s || keys.arrowdown) velocity.sub(direction);
-    if (keys.a || keys.arrowleft) velocity.add(right);
-    if (keys.d || keys.arrowright) velocity.sub(right);
-    if (velocity.length() > 0) {
-      velocity.normalize().multiplyScalar(moveSpeed);
-      camera.position.add(velocity);
-      camera.position.x = Math.max(-40, Math.min(40, camera.position.x));
-      camera.position.z = Math.max(-30, Math.min(20, camera.position.z));
-    }
-  }
-  function animate() {
-    requestAnimationFrame(animate);
-    updateMovement();
-    updateRaycaster();
-    drawMinimap();
-    renderer.render(scene, camera);
-  }
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-  loading.classList.add('hidden');
-  const minimapCanvas = document.createElement('canvas');
-  minimapCanvas.width = 500;
-  minimapCanvas.height = 400;
-  minimapCanvas.style.width = '100%';
-  minimapCanvas.style.height = '100%';
-  minimapCanvas.style.borderRadius = '10px';
-  const minimapCtx = minimapCanvas.getContext('2d');
-  document.getElementById('minimap').appendChild(minimapCanvas);
-
-  const mapScale = 0.2; // ou 1.0 para mais zoom
-  const mapOffsetX = 250; // ajuste fino
-  const mapOffsetY = 200; // ajuste fino
-
-  function drawMinimap() {
-    minimapCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
-    minimapCtx.fillStyle = '#1a1a1a';
-    minimapCtx.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height);
-    minimapCtx.strokeStyle = '#ff0000';
-    minimapCtx.lineWidth = 3;
-    [-29, -23, -17, -11, -5, 1, 9, 15].forEach(x => {
-      const mapX = mapOffsetX + (x / mapScale);
-      minimapCtx.beginPath();
-      minimapCtx.moveTo(mapX, mapOffsetY + (-20 / mapScale));
-      minimapCtx.lineTo(mapX, mapOffsetY + (10 / mapScale));
-      minimapCtx.stroke();
-    });
-    [-17, -4, 9].forEach(z => {
-      const mapZ = mapOffsetY + (z / mapScale);
-      minimapCtx.beginPath();
-      minimapCtx.moveTo(mapOffsetX + (-35 / mapScale), mapZ);
-      minimapCtx.lineTo(mapOffsetX + (20 / mapScale), mapZ);
-      minimapCtx.stroke();
-    });
-    standPositions.forEach(stand => {
-      const mapX = mapOffsetX + (stand.x / mapScale);
-      const mapZ = mapOffsetY + (stand.z / mapScale);
-      const mapWidth = stand.width / mapScale;
-      const mapDepth = stand.depth / mapScale;
-      minimapCtx.fillStyle = `#${stand.color.toString(16).padStart(6, '0')}`;
-      minimapCtx.fillRect(mapX - mapWidth / 2, mapZ - mapDepth / 2, mapWidth, mapDepth);
-      minimapCtx.strokeStyle = '#ffffff';
-      minimapCtx.lineWidth = 1;
-      minimapCtx.strokeRect(mapX - mapWidth / 2, mapZ - mapDepth / 2, mapWidth, mapDepth);
-      if (mapWidth > 12 && mapDepth > 8) {
-        minimapCtx.fillStyle = '#ffffff';
-        minimapCtx.font = "7px Arial"; //tamanho da fonte minimapa
-        minimapCtx.textAlign = 'center';
-        minimapCtx.textBaseline = 'middle';
-        let displayText = stand.label;
-        if (displayText.length > 12) displayText = displayText.substring(0, 10) + '..';
-        minimapCtx.fillText(displayText, mapX, mapZ);
-      }
-    });
-    minimapCtx.strokeStyle = '#ffff00';
-    minimapCtx.lineWidth = 3;
-    minimapCtx.strokeRect(mapOffsetX + (-40 / mapScale), mapOffsetY + (-30 / mapScale), (80 / mapScale), (60 / mapScale));
-    const playerMapX = mapOffsetX + (camera.position.x / mapScale);
-    const playerMapZ = mapOffsetY + (camera.position.z / mapScale);
-    minimapCtx.fillStyle = '#FF0000';
-    minimapCtx.beginPath();
-    minimapCtx.arc(playerMapX, playerMapZ, 6, 0, Math.PI * 2);
-    minimapCtx.fill();
-    minimapCtx.strokeStyle = '#FFFF00';
-    minimapCtx.lineWidth = 3;
-    minimapCtx.stroke();
-    const direction = new THREE.Vector3();
-    camera.getWorldDirection(direction);
-    const angle = Math.atan2(direction.x, direction.z);
-    minimapCtx.strokeStyle = '#FFFF00';
-    minimapCtx.lineWidth = 3;
-    minimapCtx.beginPath();
-    minimapCtx.moveTo(playerMapX, playerMapZ);
-    minimapCtx.lineTo(playerMapX + Math.sin(angle) * 15, playerMapZ + Math.cos(angle) * 15);
-    minimapCtx.stroke();
-    minimapCtx.fillStyle = '#ffffff';
-    minimapCtx.font = 'bold 12px Arial';
-    minimapCtx.textAlign = 'left';
-    //minimapCtx.fillText('🟨 Limite da Feira', 10, minimapCanvas.height - 45);
-    //minimapCtx.fillStyle = '#ff0000';
-    //minimapCtx.fillText('🟥 Corredores', 10, minimapCanvas.height - 25);
-    //minimapCtx.fillStyle = '#ffff00';
-    minimapCtx.fillText('⭐ Você está aqui', 10, minimapCanvas.height - 5);
-  }
-  minimapCanvas.addEventListener('click', (e) => {
-    const rect = minimapCanvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
-    const worldX = (clickX - mapOffsetX) * mapScale;
-    const worldZ = (clickY - mapOffsetY) * mapScale;
-    const targetX = Math.max(-40, Math.min(40, worldX));
-    const targetZ = Math.max(-30, Math.min(20, worldZ));
-    camera.position.x = targetX;
-    camera.position.z = targetZ;
-  });
-  minimapCanvas.addEventListener('mousemove', (e) => {
-    const rect = minimapCanvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    let foundStand = false;
-    for (const stand of standPositions) {
-      const mapX = mapOffsetX + (stand.x / mapScale);
-      const mapZ = mapOffsetY + (stand.z / mapScale);
-      const mapWidth = stand.width / mapScale;
-      const mapDepth = stand.depth / mapScale;
-      if (mouseX >= mapX - mapWidth / 2 && mouseX <= mapX + mapWidth / 2 && mouseY >= mapZ - mapDepth / 2 && mouseY <= mapZ + mapDepth / 2) {
-        minimapCanvas.title = stand.label;
-        foundStand = true;
-        break;
-      }
-    }
-    if (!foundStand) minimapCanvas.title = 'Clique para teleportar';
-  });
-  animate();
-  </script>
-  </body>
-  </html>
+</div>
+<div id="look-controls">
+  <div class="look-label">👀 Olhar</div>
+  <div class="look-pad" id="look-pad">
+    <div class="look-indicator"></div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x87ceeb);
+scene.fog=new THREE.Fog(0x87ceeb,0,120);
+const camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000);
+camera.position.set(-32,1.7,-25);
+camera.quaternion.setFromEuler(new THREE.Euler(0,Math.PI,0,'YXZ'));
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.shadowMap.enabled=true;
+document.body.appendChild(renderer.domElement);
+scene.add(new THREE.AmbientLight(0xffffff,0.6));
+const sun=new THREE.DirectionalLight(0xffffff,0.8);
+sun.position.set(30,40,30);
+sun.castShadow=true;
+scene.add(sun);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(200,150),new THREE.MeshStandardMaterial({color:0xf0f0f0}));
+floor.rotation.x=-Math.PI/2;
+floor.receiveShadow=true;
+scene.add(floor);
+scene.add(new THREE.GridHelper(200,100,0xcccccc,0xe0e0e0));
+const floorArea=new THREE.Mesh(new THREE.PlaneGeometry(80,60),new THREE.MeshStandardMaterial({color:0x888888}));
+floorArea.rotation.x=-Math.PI/2;
+floorArea.position.set(0,0.01,-5);
+scene.add(floorArea);
+const fairEdges=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(80,0.5,60)),new THREE.LineBasicMaterial({color:0xffff00}));
+fairEdges.position.set(0,0.25,-5);
+scene.add(fairEdges);
+const interactiveStands=[];
+const standPositions=[];
+function createStand(x,z,w,d,c,l,u){
+const g=new THREE.Group();
+const base=new THREE.Mesh(new THREE.BoxGeometry(w,0.2,d),new THREE.MeshStandardMaterial({color:0x8B4513}));
+base.position.y=0.1;
+g.add(base);
+const wall=new THREE.Mesh(new THREE.BoxGeometry(w,3,0.2),new THREE.MeshStandardMaterial({color:c}));
+wall.position.set(0,1.5,d/2-0.1);
+wall.castShadow=true;
+g.add(wall);
+const roof=new THREE.Mesh(new THREE.BoxGeometry(w,0.2,d),new THREE.MeshStandardMaterial({color:0xffffff}));
+roof.position.y=3;
+g.add(roof);
+const panel=new THREE.Mesh(new THREE.BoxGeometry(w-0.5,2.5,0.1),new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:0.3}));
+panel.position.set(0,1.5,d/2-0.15);
+panel.userData={interactive:true,url:u,label:l};
+g.add(panel);
+interactiveStands.push(panel);
+standPositions.push({x,z,width:w,depth:d,color:c,label:l});
+const cv=document.createElement('canvas');
+cv.width=512;cv.height=256;
+const ctx=cv.getContext('2d');
+ctx.fillStyle='#fff';
+ctx.fillRect(0,0,512,256);
+ctx.fillStyle='#000';
+ctx.font='bold 40px Arial';
+ctx.textAlign='center';
+ctx.fillText(l,256,128);
+const sign=new THREE.Mesh(new THREE.PlaneGeometry(Math.min(w*0.8,3.5),Math.min(w*0.8,3.5)*0.5),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv)}));
+sign.position.set(0,2.2,d/2-0.25);
+sign.rotation.y=Math.PI;
+g.add(sign);
+g.position.set(x,0,z);
+scene.add(g);
+return g;
+}
+const s1=createStand(0,-25,16,4,0x2c3e50,'FIEMG e SENAI','https://fiemg.com.br');
+s1.rotation.y=Math.PI;
+createStand(-32,-20,3,4,0xffe600,'Credenciamento','https://www.fivel.com.br');
+createStand(-32,-14,3,3,0xff6b6b,'Meta Gil','https://www.metagil.com.br');
+createStand(-32,-10,3,3,0x4ecdc4,'Win Point','https://www.winpoint.com.br');
+createStand(-32,-6,3,3,0xffe66d,'IDET','https://www.idet.com.br');
+createStand(-32,-2,3,3,0x95e1d3,'Stradi','https://www.stradi.com.br');
+createStand(-32,3,3,5,0xf38181,'Davi Araújo','https://www.daviaraujo.com.br');
+createStand(-26,-14,3,3,0xaa96da,'TDM','https://www.tdm.com.br');
+createStand(-26,-10,3,3,0xff9999,'TSZU','https://www.tszu.com.br');
+createStand(-26,-6,3,3,0x66ccff,'TEHAL','https://www.tehal.com.br');
+createStand(-26,-2,3,3,0xffcc66,'ALPHA RÚSSIA','https://www.alpharussia.com.br');
+createStand(-26,2,3,3,0x99ff99,'AMICUS','https://www.amicus.com.br');
+createStand(-20,-14,3,3,0xff66cc,'Trivale','https://www.trivale.com.br');
+createStand(-20,-10,3,3,0xccff66,'Qualitronalt','https://www.qualitronalt.com.br');
+createStand(-20,-6,3,3,0x66ffcc,'GMC','https://www.gmc.com.br');
+createStand(-20,-2,3,3,0xff6699,'Magneton','https://www.magneton.com.br');
+createStand(-20,2,3,3,0x9966ff,'Enterplak','https://www.enterplak.com.br');
+createStand(-20,6,3,3,0x66ff99,'RW','https://www.rw.com.br');
+createStand(-14,-14,3,3,0xffaa66,'Sensodron','https://www.sensodron.com.br');
+createStand(-14,-10,3,3,0xaa66ff,'RIA Galerari','https://www.riagalerari.com.br');
+createStand(-14,-6,3,3,0x66aaff,'ALPHA Pro','https://www.alphapro.com.br');
+createStand(-14,-2,3,3,0xffcc99,'Gráfica','https://www.grafica.com.br');
+createStand(-14,2,3,3,0x99ccff,'Wrathbear','https://www.wrathbear.com.br');
+createStand(-14,6,3,3,0xff9966,'FGM','https://www.fgm.com.br');
+createStand(-8,-14,3,3,0xccaa66,'JK','https://www.jk.com.br');
+createStand(-8,-6,3,9,0x66ccaa,'Sense','https://www.sense.com.br');
+createStand(-2,-1,3,5,0xff6666,'Fractum','https://www.fractum.com.br');
+createStand(-2,5,3,5,0x6666ff,'Novoligo','https://www.novoligo.com.br');
+createStand(6,-10,3,3,0x66ff66,'Ri Beckman','https://www.ribeckman.com.br');
+createStand(6,-6,3,3,0xffff66,'Tamura','https://www.tamura.com.br');
+createStand(6,-2,3,3,0x66ffff,'ABT Techniquitel','https://www.abttechniquitel.com.br');
+createStand(6,2,3,3,0xff66ff,'ACEVALE','https://www.acevale.com.br');
+createStand(12,-10,3,3,0x99aa66,'Linear DEMINI','https://www.lineardemini.com.br');
+createStand(12,-6,3,3,0xaa9966,'Alarmes SRS','https://www.alarmessrs.com.br');
+createStand(12,-2,3,3,0x6699aa,'Sistron','https://www.sistron.com.br');
+createStand(12,2,3,3,0xaa6699,'Triunfo','https://www.triunfo.com.br');
+createStand(12,6,3,3,0x996699,'Panasonic','https://www.panasonic.com.br');
+createStand(18,-6,3,3,0x996666,'Fuji','https://www.fuji.com.br');
+createStand(18,-2,3,3,0x669966,'Eburlas','https://www.eburlas.com.br');
+createStand(18,2,3,3,0x666699,'EPS','https://www.eps.com.br');
+createStand(25,-20,8,6,0x34495e,'ESPAÇO CIDADE','https://www.espacocidadecriativa.com.br');
+createStand(25,-10,8,6,0x16a085,'SINDVEL SEBRAE','https://www.sindvel.com.br');
+createStand(32,0,10,8,0x8e44ad,'Rodadas Negócios','https://www.fivel.com.br/rodadas');
+createStand(-28,12,4,3,0xe74c3c,'FEnix','https://www.fenix.com.br');
+createStand(-24,12,3,3,0x3498db,'Pixel','https://www.pixel.com.br');
+createStand(-20,12,3,3,0xf39c12,'IPESI','https://www.ipesi.com.br');
+createStand(-16,12,3,3,0x2ecc71,'LC','https://www.lc.com.br');
+createStand(-12,12,3,3,0x9b59b6,'AMS','https://www.ams.com.br');
+createStand(-8,12,3,3,0xe67e22,'INATEL','https://www.inatel.br');
+createStand(-4,12,3,3,0x1abc9c,'Tech Lab','https://www.techlab.com.br');
+createStand(0,12,3,3,0xd35400,'NaHub','https://www.nahub.com.br');
+createStand(4,12,3,3,0x27ae60,'Alpha Tech','https://www.alphatech.com.br');
+createStand(10,12,12,3,0x2c3e50,'Incubadoras','https://www.incubadoras.com.br');
+createStand(24,12,12,3,0x34495e,'SINDICATO RURAL','https://www.sindicatorural.com.br');
+const raycaster=new THREE.Raycaster();
+let hoveredObject=null;
+const keys={w:false,a:false,s:false,d:false};
+let isPointerLocked=false;
+const euler=new THREE.Euler(0,0,0,'YXZ');
+const isMobile=/Android|webOS|iPhone|iPad|iPod/i.test(navigator.userAgent)||window.innerWidth<=768;
+document.getElementById('start-btn').addEventListener('click',()=>{
+document.getElementById('instructions').classList.add('hidden');
+if(isMobile){
+document.getElementById('mobile-controls').classList.add('active');
+document.getElementById('look-controls').classList.add('active');
+isPointerLocked=true;
+}else{
+renderer.domElement.requestPointerLock();
+}
+});
+document.addEventListener('pointerlockchange',()=>{
+if(!isMobile)isPointerLocked=document.pointerLockElement===renderer.domElement;
+});
+document.addEventListener('mousemove',(e)=>{
+if(!isPointerLocked||isMobile)return;
+euler.setFromQuaternion(camera.quaternion);
+euler.y-=e.movementX*0.002;
+euler.x-=e.movementY*0.002;
+euler.x=Math.max(-Math.PI/2,Math.min(Math.PI/2,euler.x));
+camera.quaternion.setFromEuler(euler);
+});
+document.querySelectorAll('.control-btn').forEach(btn=>{
+btn.addEventListener('touchstart',(e)=>{
+e.preventDefault();
+keys[btn.getAttribute('data-key')]=true;
+});
+btn.addEventListener('touchend',(e)=>{
+e.preventDefault();
+keys[btn.getAttribute('data-key')]=false;
+});
+});
+const lookPad=document.getElementById('look-pad');
+let touchId=null,centerX=0,centerY=0;
+lookPad.addEventListener('touchstart',(e)=>{
+e.preventDefault();
+if(touchId===null&&e.touches.length>0){
+const t=e.touches[0];
+touchId=t.identifier;
+const r=lookPad.getBoundingClientRect();
+centerX=r.left+r.width/2;
+centerY=r.top+r.height/2;
+}
+});
+lookPad.addEventListener('touchmove',(e)=>{
+e.preventDefault();
+if(touchId!==null){
+for(let i=0;i<e.touches.length;i++){
+if(e.touches[i].identifier===touchId){
+const t=e.touches[i];
+const dx=t.clientX-centerX;
+const dy=t.clientY-centerY;
+euler.setFromQuaternion(camera.quaternion);
+euler.y-=dx*0.001;
+euler.x-=dy*0.001;
+euler.x=Math.max(-Math.PI/2,Math.min(Math.PI/2,euler.x));
+camera.quaternion.setFromEuler(euler);
+}
+}
+}
+});
+lookPad.addEventListener('touchend',(e)=>{
+e.preventDefault();
+for(let i=0;i<e.changedTouches.length;i++){
+if(e.changedTouches[i].identifier===touchId){
+touchId=null;
+document.querySelector('.look-indicator').style.transform='translate(-50%,-50%)';
+}
+}
+});
+document.addEventListener('keydown',(e)=>{
+const k=e.key.toLowerCase();
+if(keys.hasOwnProperty(k))keys[k]=true;
+});
+document.addEventListener('keyup',(e)=>{
+const k=e.key.toLowerCase();
+if(keys.hasOwnProperty(k))keys[k]=false;
+});
+const modal=document.getElementById('custom-modal');
+let pendingUrl=null;
+function showModal(l,u){
+pendingUrl=u;
+document.getElementById('modal-text').textContent=`Visitar ${l}?`;
+document.getElementById('modal-url').textContent=u;
+modal.classList.remove('hidden');
+if(document.pointerLockElement)document.exitPointerLock();
+}
+function hideModal(){
+modal.classList.add('hidden');
+pendingUrl=null;
+if(!isMobile)setTimeout(()=>renderer.domElement.requestPointerLock(),10);
+}
+document.getElementById('modal-visit').addEventListener('click',()=>{
+if(pendingUrl)window.open(pendingUrl,'_blank');
+hideModal();
+});
+document.getElementById('modal-cancel').addEventListener('click',hideModal);
+const hoverInfo=document.getElementById('hover-info');
+function updateRaycaster(){
+raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
+const hits=raycaster.intersectObjects(interactiveStands);
+if(hits.length>0){
+const obj=hits[0].object;
+if(hoveredObject!==obj){
+if(hoveredObject)hoveredObject.material.opacity=0.3;
+hoveredObject=obj;
+hoveredObject.material.opacity=0.6;
+hoverInfo.textContent=`🖱️ ${obj.userData.label}`;
+hoverInfo.classList.add('visible');
+}
+}else{
+if(hoveredObject){hoveredObject.material.opacity=0.3;hoveredObject=null;}
+hoverInfo.classList.remove('visible');
+}
+}
+document.addEventListener('click',()=>{
+if(!isPointerLocked)return;
+if(hoveredObject&&hoveredObject.userData.url){
+showModal(hoveredObject.userData.label,hoveredObject.userData.url);
+}
+});
+function updateMovement(){
+if(!isPointerLocked)return;
+const dir=new THREE.Vector3();
+camera.getWorldDirection(dir);
+dir.y=0;
+dir.normalize();
+const right=new THREE.Vector3();
+right.crossVectors(camera.up,dir).normalize();
+const vel=new THREE.Vector3();
+if(keys.w)vel.add(dir);
+if(keys.s)vel.sub(dir);
+if(keys.a)vel.add(right);
+if(keys.d)vel.sub(right);
+if(vel.length()>0){
+vel.normalize().multiplyScalar(0.15);
+camera.position.add(vel);
+camera.position.x=Math.max(-40,Math.min(40,camera.position.x));
+camera.position.z=Math.max(-30,Math.min(20,camera.position.z));
+}
+}
+const minimapCanvas=document.createElement('canvas');
+minimapCanvas.width=500;
+minimapCanvas.height=400;
+minimapCanvas.style.width='100%';
+minimapCanvas.style.height='100%';
+const ctx=minimapCanvas.getContext('2d');
+document.getElementById('minimap').appendChild(minimapCanvas);
+function drawMinimap(){
+ctx.clearRect(0,0,500,400);
+ctx.fillStyle='#1a1a1a';
+ctx.fillRect(0,0,500,400);
+ctx.strokeStyle='#ff0';
+ctx.lineWidth=3;
+ctx.strokeRect(50,100,400,300);
+standPositions.forEach(s=>{
+const mx=250+(s.x*5);
+const mz=250+(s.z*5);
+ctx.fillStyle=`#${s.color.toString(16).padStart(6,'0')}`;
+ctx.fillRect(mx-s.width*2.5,mz-s.depth*2.5,s.width*5,s.depth*5);
+});
+const px=250+(camera.position.x*5);
+const pz=250+(camera.position.z*5);
+ctx.fillStyle='#f00';
+ctx.beginPath();
+ctx.arc(px,pz,6,0,Math.PI*2);
+ctx.fill();
+}
+minimapCanvas.addEventListener('click',(e)=>{
+const r=minimapCanvas.getBoundingClientRect();
+const x=(e.clientX-r.left)/r.width*500;
+const y=(e.clientY-r.top)/r.height*400;
+camera.position.x=Math.max(-40,Math.min(40,(x-250)/5));
+camera.position.z=Math.max(-30,Math.min(20,(y-250)/5));
+});
+function animate(){
+requestAnimationFrame(animate);
+updateMovement();
+updateRaycaster();
+drawMinimap();
+renderer.render(scene,camera);
+}
+window.addEventListener('resize',()=>{
+camera.aspect=window.innerWidth/window.innerHeight;
+camera.updateProjectionMatrix();
+renderer.setSize(window.innerWidth,window.innerHeight);
+});
+document.getElementById('loading').classList.add('hidden');
+animate();
+</script>
+</body>
+</html>
