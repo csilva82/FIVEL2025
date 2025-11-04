@@ -619,6 +619,17 @@
     }
     if (!foundStand) minimapCanvas.title = 'Clique para teleportar';
   });
+
+     // Botões móveis
+    document.getElementById('up').addEventListener('touchstart',()=>keys.w=true);
+    document.getElementById('up').addEventListener('touchend',()=>keys.w=false);
+    document.getElementById('down').addEventListener('touchstart',()=>keys.s=true);
+    document.getElementById('down').addEventListener('touchend',()=>keys.s=false);
+    document.getElementById('left').addEventListener('touchstart',()=>keys.a=true);
+    document.getElementById('left').addEventListener('touchend',()=>keys.a=false);
+    document.getElementById('right').addEventListener('touchstart',()=>keys.d=true);
+    document.getElementById('right').addEventListener('touchend',()=>keys.d=false);
+    
   animate();
   </script>
   </body>
