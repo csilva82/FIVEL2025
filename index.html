@@ -39,6 +39,31 @@ body.modal-open canvas { cursor: default; }
 #modal-visit:hover { background: #45a049; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4); }
 #modal-cancel { background: rgba(255, 255, 255, 0.2); color: white; }
 #modal-cancel:hover { background: rgba(255, 255, 255, 0.3); transform: translateY(-2px); }
+
+/* ================= BOTÕES MÓVEL ================= */
+#mobile-controls {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  width: 120px;
+  height: 120px;
+  gap: 10px;
+  pointer-events: all;
+  z-index: 100;
+}
+#mobile-controls button {
+  flex: 1 1 40px;
+  background: rgba(76, 175, 80, 0.5);
+  border: none;
+  color: white;
+  font-size: 20px;
+  border-radius: 10px;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+#mobile-controls button:active { opacity: 1; }
 </style>
 </head>
 <body>
@@ -46,7 +71,7 @@ body.modal-open canvas { cursor: default; }
 <div id="instructions">
   <h2>🎪 Bem-vindo à FIVEL 2025!</h2>
   <p style="margin: 20px 0;">Navegue pela feira virtual e clique nos estandes para visitar os sites dos expositores.</p>
-  <p style="font-size: 14px; color: #ccc;">Use WASD ou setas para se mover, mouse para olhar ao redor.</p>
+  <p style="font-size: 14px; color: #ccc;">Use WASD ou setas para se mover, mouse ou toque para olhar ao redor.</p>
   <button id="start-btn">Entrar na Feira</button>
 </div>
 <div id="ui-overlay">
@@ -54,522 +79,164 @@ body.modal-open canvas { cursor: default; }
     <h3>⌨️ Controles</h3>
     <div><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> - Mover</div>
     <div><kbd>↑</kbd> <kbd>←</kbd> <kbd>↓</kbd> <kbd>→</kbd> - Mover</div>
-    <div><kbd>Mouse</kbd> - Olhar</div>
-    <div><kbd>Click</kbd> - Interagir</div>
+    <div><kbd>Mouse / Touch</kbd> - Olhar</div>
+    <div><kbd>Click / Tap</kbd> - Interagir</div>
     <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #333;"><kbd>ESC</kbd> - Sair da feira</div>
   </div>
   <div id="crosshair"></div>
-  <div id="hover-info">🖱️ Clique para visitar</div>
-  <div id="minimap"><div id="minimap-title">🗺️ MAPA DA FEIRA </div></div>
+  <div id="hover-info">🖱️ Clique no estande</div>
+  <div id="minimap">
+    <div id="minimap-title">Mini Mapa da Feira</div>
+  </div>
 </div>
+
+<!-- BOTÕES FIXOS PARA MÓVEL -->
+<div id="mobile-controls">
+  <button id="up">↑</button>
+  <button id="left">←</button>
+  <button id="down">↓</button>
+  <button id="right">→</button>
+</div>
+
 <div id="custom-modal" class="hidden">
   <div id="modal-content">
-    <h3>🌐 Visitar Site</h3>
-    <p id="modal-text">Deseja visitar o site deste estande?</p>
-    <div class="url-display" id="modal-url"></div>
+    <h3 id="modal-label">Estande</h3>
+    <p>Visite o site:</p>
+    <div class="url-display" id="modal-url">https://example.com</div>
     <div id="modal-buttons">
-      <button id="modal-visit">✓ Visitar</button>
-      <button id="modal-cancel">✕ Cancelar</button>
+      <button id="modal-visit">Visitar</button>
+      <button id="modal-cancel">Cancelar</button>
     </div>
   </div>
 </div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r152/three.min.js"></script>
 <script>
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87ceeb);
-scene.fog = new THREE.Fog(0x87ceeb, 0, 120);
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(-32, 1.7, -25);
-const initialEuler = new THREE.Euler(0, Math.PI, 0, 'YXZ');
-camera.quaternion.setFromEuler(initialEuler);
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-document.body.appendChild(renderer.domElement);
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-scene.add(ambientLight);
-const sun = new THREE.DirectionalLight(0xffffff, 0.8);
-sun.position.set(30, 40, 30);
-sun.castShadow = true;
-sun.shadow.mapSize.width = 2048;
-sun.shadow.mapSize.height = 2048;
-sun.shadow.camera.near = 0.5;
-sun.shadow.camera.far = 150;
-sun.shadow.camera.left = -80;
-sun.shadow.camera.right = 80;
-sun.shadow.camera.top = 80;
-sun.shadow.camera.bottom = -80;
-scene.add(sun);
-const floorGeometry = new THREE.PlaneGeometry(200, 150);
-const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.8, metalness: 0.2 });
-const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-floor.rotation.x = -Math.PI / 2;
-floor.receiveShadow = true;
-scene.add(floor);
-const gridHelper = new THREE.GridHelper(200, 100, 0xcccccc, 0xe0e0e0);
-scene.add(gridHelper);
-const fairBoundaryGeometry = new THREE.BoxGeometry(80, 0.5, 60);
-
-const floorAreaGeometry = new THREE.PlaneGeometry(80, 60);
-const floorAreaMaterial = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.8, metalness: 0.2 });
-const floorArea = new THREE.Mesh(floorAreaGeometry, floorAreaMaterial);
-floorArea.rotation.x = -Math.PI / 2;
-floorArea.position.set(0, 0.01, -5); // z = -5 é o deslocamento do quadrado
-floorArea.receiveShadow = true;
-scene.add(floorArea);
-
-const edgesGeometry = new THREE.EdgesGeometry(fairBoundaryGeometry);
-const edgesMaterial = new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 3 });
-const fairEdges = new THREE.LineSegments(edgesGeometry, edgesMaterial);
-fairEdges.position.set(0, 0.25, -5);
-scene.add(fairEdges);
-function createCorridorLine(x1, z1, x2, z2) {
-  const points = [new THREE.Vector3(x1, 0.05, z1), new THREE.Vector3(x2, 0.05, z2)];
-  const geometry = new THREE.BufferGeometry().setFromPoints(points);
-  const material = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 4 });
-  const line = new THREE.Line(geometry, material);
-  scene.add(line);
-  const distance = Math.sqrt((x2-x1)**2 + (z2-z1)**2);
-  const angle = Math.atan2(x2-x1, z2-z1);
-  const corridorGeometry = new THREE.PlaneGeometry(0.8, distance); 
-  const corridorMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.8 });
-  const corridor = new THREE.Mesh(corridorGeometry, corridorMaterial);
-  corridor.rotation.x = -Math.PI / 2;
-  corridor.rotation.z = angle;
-  corridor.position.set((x1+x2)/2, 0.02, (z1+z2)/2);
-  scene.add(corridor);
-}
-//createCorridorLine(-29, -20, -29, 10);
-//createCorridorLine(-23, -20, -23, 10);
-//createCorridorLine(-17, -20, -17, 10);
-//createCorridorLine(-11, -20, -11, 10);
-//createCorridorLine(-5, -20, -5, 10);
-//createCorridorLine(1, -20, 1, 10);
-//createCorridorLine(9, -20, 9, 10);
-//createCorridorLine(15, -20, 15, 10);
-//createCorridorLine(-35, -17, 20, -17);
-//createCorridorLine(-35, -4, 20, -4);
-//createCorridorLine(-35, 9, 20, 9);
-//createCorridorLine(-32, -25, -32, -17);
-const interactiveStands = [];
-const standPositions = [];
-function createStand(x, z, width, depth, color, label, url) {
-  const group = new THREE.Group();
-  const baseGeometry = new THREE.BoxGeometry(width, 0.2, depth);
-  const baseMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
-  const base = new THREE.Mesh(baseGeometry, baseMaterial);
-  base.position.y = 0.1;
-  base.receiveShadow = true;
-  group.add(base);
-  const wallGeometry = new THREE.BoxGeometry(width, 3, 0.2);
-  const wallMaterial = new THREE.MeshStandardMaterial({ color: color });
-  const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-  wall.position.set(0, 1.5, depth/2 - 0.1);
-  wall.castShadow = true;
-  wall.receiveShadow = true;
-  group.add(wall);
-  const roofGeometry = new THREE.BoxGeometry(width, 0.2, depth);
-  const roofMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
-  const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-  roof.position.y = 3;
-  roof.castShadow = true;
-  group.add(roof);
-  const pillarGeometry = new THREE.BoxGeometry(0.2, 3, 0.2);
-  const pillarMaterial = new THREE.MeshStandardMaterial({ color: 0x666666 });
-  const positions = [[-width/2+0.1,1.5,depth/2-0.1],[width/2-0.1,1.5,depth/2-0.1],[-width/2+0.1,1.5,-depth/2+0.1],[width/2-0.1,1.5,-depth/2+0.1]];
-  positions.forEach(pos => {
-    const pillar = new THREE.Mesh(pillarGeometry, pillarMaterial);
-    pillar.position.set(...pos);
-    pillar.castShadow = true;
-    group.add(pillar);
-  });
-  const panelGeometry = new THREE.BoxGeometry(width-0.5, 2.5, 0.1);
-  const panelMaterial = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.3 });
-  const panel = new THREE.Mesh(panelGeometry, panelMaterial);
-  panel.position.set(0, 1.5, depth/2-0.15);
-  panel.userData = { interactive: true, url: url, label: label, originalColor: color };
-  group.add(panel);
-  interactiveStands.push(panel);
-  standPositions.push({x:x,z:z,width:width,depth:depth,color:color,label:label});
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 256;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, 512, 256);
-  ctx.fillStyle = '#000000';
-  ctx.font = 'bold 40px Arial';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(label, 256, 128);
-  const texture = new THREE.CanvasTexture(canvas);
-  const signMaterial = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
-  const signWidth = Math.min(width*0.8, 3.5);
-  const signGeometry = new THREE.PlaneGeometry(signWidth, signWidth*0.5);
-  const sign = new THREE.Mesh(signGeometry, signMaterial);
-  sign.position.set(0, 2.2, depth/2-0.25);
-  sign.rotation.y = Math.PI;
-  group.add(sign);
-  group.position.set(x, 0, z);
-  scene.add(group);
-  return group;
-}
-
-//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>createStand
-// createStand(x, z, width, depth, color, label, url)
-const senaiStand = createStand(
-  0,       // X: posição horizontal no mapa (esquerda/direita)
-  -25,     // Z: posição vertical no mapa (profundidade, negativo = para trás)
-  16,      // Width: largura do estande
-  4,       // Depth: profundidade do estande
-  0x2c3e50,// Color: cor do estande
-  'FIEMG e SENAI', // Label do estande
-  'https://fiemg.com.br' // URL do site
-);
-//O eixo Y é sempre altura (0 no chão).
-//O grupo é posicionado com group.position.set(x, 0, z).
-//width → largura ao longo do eixo X
-//depth → profundidade ao longo do eixo Z
-// Rotaciona o stand no eixo Y (vertical)
-
-//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Rotação
-senaiStand.rotation.y = Math.PI;        // gira 180° (inverter frente e trás)
-//senaiStand.rotation.y = Math.PI / 2;    // gira 90° para a direita
-//senaiStand.rotation.y = -Math.PI / 2;   // gira 90° para a esquerda
-//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>Espelhamento
-// Espelhamento horizontal (X)
-//senaiStand.scale.x = -1; 
-// Espelhamento vertical (Z)
-//senaiStand.scale.z = -1;
-
-//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Posicionamento X/Z
-// Posicionamento X/Z
-//senaiStand.position.x = 5;   // mover para a direita
-//senaiStand.position.z = -20; // mover para frente/trás
-
-//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>  Ajuste de altura
-//Ajuste de altura
-//senaiStand.position.y = 0.1; // elevação do chão (por exemplo, para evitar colisão com o piso)
-
-//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Escala
-//Escala
-//senaiStand.scale.set(1, 1, 1);   // tamanho normal
-//senaiStand.scale.set(2, 1, 1);   // dobra a largura
-//senaiStand.scale.set(1, 2, 1);   // dobra a altura
-//senaiStand.scale.set(1, 1, 0.5); // metade da profundidade
-
-//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Mudança de cor dinâmica
-// Mudar cor do painel principal
-//senaiStand.children.forEach(child => {
-//  if (child.material) child.material.color.set(0xff0000); // vermelho
-//});
-
-
-
-
-createStand(-32,-20,3,4,0xffe600,'Credenciamento','https://www.fivel.com.br');
-createStand(-32,-14,3,3,0xff6b6b,'Meta Gil','https://www.metagil.com.br');
-createStand(-32,-10,3,3,0x4ecdc4,'Win Point','https://www.winpoint.com.br');
-createStand(-32,-6,3,3,0xffe66d,'IDET','https://www.idet.com.br');
-createStand(-32,-2,3,3,0x95e1d3,'Stradi','https://www.stradi.com.br');
-createStand(-32,3,3,5,0xf38181,'Davi Araújo','https://www.daviaraujo.com.br');
-createStand(-26,-14,3,3,0xaa96da,'TDM','https://www.tdm.com.br');
-createStand(-26,-10,3,3,0xff9999,'TSZU','https://www.tszu.com.br');
-createStand(-26,-6,3,3,0x66ccff,'TEHAL','https://www.tehal.com.br');
-createStand(-26,-2,3,3,0xffcc66,'ALPHA RÚSSIA','https://www.alpharussia.com.br');
-createStand(-26,2,3,3,0x99ff99,'AMICUS','https://www.amicus.com.br');
-createStand(-20,-14,3,3,0xff66cc,'Trivale','https://www.trivale.com.br');
-createStand(-20,-10,3,3,0xccff66,'Qualitronalt','https://www.qualitronalt.com.br');
-createStand(-20,-6,3,3,0x66ffcc,'GMC','https://www.gmc.com.br');
-createStand(-20,-2,3,3,0xff6699,'Magneton','https://www.magneton.com.br');
-createStand(-20,2,3,3,0x9966ff,'Enterplak','https://www.enterplak.com.br');
-createStand(-20,6,3,3,0x66ff99,'RW','https://www.rw.com.br');                   //
-createStand(-14,-14,3,3,0xffaa66,'Sensodron','https://www.sensodron.com.br');
-createStand(-14,-10,3,3,0xaa66ff,'RIA Galerari','https://www.riagalerari.com.br');
-createStand(-14,-6,3,3,0x66aaff,'ALPHA Pro','https://www.alphapro.com.br');
-createStand(-14,-2,3,3,0xffcc99,'Gráfica','https://www.grafica.com.br');
-createStand(-14,2,3,3,0x99ccff,'Wrathbear','https://www.wrathbear.com.br');
-createStand(-14,6,3,3,0xff9966,'FGM','https://www.fgm.com.br');
-createStand(-8,-14,3,3,0xccaa66,'JK','https://www.jk.com.br');
-createStand(-8,-6,3,9,0x66ccaa,'Sense','https://www.sense.com.br');
-createStand(-2,-1,3,5,0xff6666,'Fractum','https://www.fractum.com.br'); //
-createStand(-2,5,3,5,0x6666ff,'Novoligo','https://www.novoligo.com.br'); //
-createStand(6,-10,3,3,0x66ff66,'Ri Beckman','https://www.ribeckman.com.br');
-createStand(6,-6,3,3,0xffff66,'Tamura','https://www.tamura.com.br');
-createStand(6,-2,3,3,0x66ffff,'ABT Techniquitel','https://www.abttechniquitel.com.br');
-createStand(6,2,3,3,0xff66ff,'ACEVALE','https://www.acevale.com.br');
-createStand(12,-10,3,3,0x99aa66,'Linear DEMINI','https://www.lineardemini.com.br');
-createStand(12,-6,3,3,0xaa9966,'Alarmes SRS','https://www.alarmessrs.com.br');
-createStand(12,-2,3,3,0x6699aa,'Sistron','https://www.sistron.com.br');
-createStand(12,2,3,3,0xaa6699,'Triunfo','https://www.triunfo.com.br');
-createStand(12,6,3,3,0x996699,'Panasonic','https://www.panasonic.com.br');
-createStand(18,-6,3,3,0x996666,'Fuji','https://www.fuji.com.br');
-createStand(18,-2,3,3,0x669966,'Eburlas','https://www.eburlas.com.br');
-createStand(18,2,3,3,0x666699,'EPS','https://www.eps.com.br');
-createStand(25,-20,8,6,0x34495e,'ESPAÇO CIDADE CRIATIVA','https://www.espacocidadecriativa.com.br');
-createStand(25,-10,8,6,0x16a085,'SINDVEL SEBRAE','https://www.sindvel.com.br');
-createStand(32,0,10,8,0x8e44ad,'Rodadas de Negócios','https://www.fivel.com.br/rodadas');
-createStand(-28,12,4,3,0xe74c3c,'FEnix','https://www.fenix.com.br');
-createStand(-24,12,3,3,0x3498db,'Pixel','https://www.pixel.com.br');
-createStand(-20,12,3,3,0xf39c12,'IPESI','https://www.ipesi.com.br');
-createStand(-16,12,3,3,0x2ecc71,'LC','https://www.lc.com.br');
-createStand(-12,12,3,3,0x9b59b6,'AMS','https://www.ams.com.br');
-createStand(-8,12,3,3,0xe67e22,'INATEL','https://www.inatel.br');
-createStand(-4,12,3,3,0x1abc9c,'Tech Lab','https://www.techlab.com.br');
-createStand(0,12,3,3,0xd35400,'NaHub','https://www.nahub.com.br');
-createStand(4,12,3,3,0x27ae60,'Alpha Tech','https://www.alphatech.com.br');
-createStand(10,12,12,3,0x2c3e50,'Incubadoras Municipal','https://www.incubadoras.com.br');
-createStand(24,12,12,3,0x34495e,'SINDICATO RURAL','https://www.sindicatorural.com.br');
-
-
-const raycaster = new THREE.Raycaster();
+let scene, camera, renderer, controls;
+let keys = { w: false, a: false, s: false, d: false };
+let velocity = 0.1;
+let euler = new THREE.Euler(0, 0, 0, 'YXZ');
 let hoveredObject = null;
-const moveSpeed = 0.15;
-const keys = {w:false,a:false,s:false,d:false,arrowup:false,arrowdown:false,arrowleft:false,arrowright:false};
-let isPointerLocked = false;
-const euler = new THREE.Euler(0, 0, 0, 'YXZ');
-const PI_2 = Math.PI / 2;
-document.addEventListener('keydown', (e) => {
-  const key = e.key.toLowerCase();
-  if (e.key === 'Escape' && !isPointerLocked) {
-    if (confirm('Deseja realmente sair da Feira Virtual?')) {
-      window.close();
-      setTimeout(() => { if (!window.closed) { window.history.back(); setTimeout(() => window.location.href = 'about:blank', 100); } }, 100);
+
+function init() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 2, 5);
+
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Luz
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(10, 20, 10);
+    scene.add(light);
+
+    // Chão
+    const floorGeometry = new THREE.PlaneGeometry(100, 100);
+    const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x222222 });
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = -Math.PI/2;
+    scene.add(floor);
+
+    // Estandes exemplo
+    const boxGeo = new THREE.BoxGeometry(2, 2, 2);
+    const boxMat = new THREE.MeshStandardMaterial({ color: 0x4CAF50 });
+    for(let i=-4; i<=4; i+=4){
+        for(let j=-4; j<=4; j+=4){
+            const box = new THREE.Mesh(boxGeo, boxMat.clone());
+            box.position.set(i, 1, j);
+            box.userData = { label: `Estande ${i+5},${j+5}`, url: 'https://example.com' };
+            scene.add(box);
+        }
     }
-    return;
-  }
-  if (keys.hasOwnProperty(key)) keys[key] = true;
-});
-document.addEventListener('keyup', (e) => {
-  const key = e.key.toLowerCase();
-  if (keys.hasOwnProperty(key)) keys[key] = false;
-});
-const startBtn = document.getElementById('start-btn');
-const instructions = document.getElementById('instructions');
-const loading = document.getElementById('loading');
-startBtn.addEventListener('click', () => {
-  instructions.classList.add('hidden');
-  renderer.domElement.requestPointerLock();
-});
-document.addEventListener('pointerlockchange', () => {
-  const wasLocked = isPointerLocked;
-  isPointerLocked = document.pointerLockElement === renderer.domElement;
-  if (wasLocked && !isPointerLocked && customModal.classList.contains('hidden')) {
-    Object.keys(keys).forEach(key => keys[key] = false);
-  }
-});
-renderer.domElement.addEventListener('contextmenu', (e) => { e.preventDefault(); return false; });
-document.addEventListener('mousemove', (e) => {
-  if (!isPointerLocked) return;
-  const movementX = e.movementX || 0;
-  const movementY = e.movementY || 0;
-  euler.setFromQuaternion(camera.quaternion);
-  euler.y -= movementX * 0.002;
-  euler.x -= movementY * 0.002;
-  euler.x = Math.max(-PI_2, Math.min(PI_2, euler.x));
-  camera.quaternion.setFromEuler(euler);
-});
-const customModal = document.getElementById('custom-modal');
-const modalText = document.getElementById('modal-text');
-const modalUrl = document.getElementById('modal-url');
-const modalVisit = document.getElementById('modal-visit');
-const modalCancel = document.getElementById('modal-cancel');
-let pendingUrl = null;
-let pendingLabel = null;
-function showModal(label, url) {
-  pendingUrl = url;
-  pendingLabel = label;
-  modalText.textContent = `Deseja visitar o site do ${label}?`;
-  modalUrl.textContent = url;
-  customModal.classList.remove('hidden');
-  document.body.classList.add('modal-open');
-  if (document.pointerLockElement) document.exitPointerLock();
+
+    window.addEventListener('resize', onWindowResize);
+    document.addEventListener('keydown', (e)=>{ if(e.key.toLowerCase()=='w') keys.w=true; if(e.key.toLowerCase()=='a') keys.a=true; if(e.key.toLowerCase()=='s') keys.s=true; if(e.key.toLowerCase()=='d') keys.d=true; });
+    document.addEventListener('keyup', (e)=>{ if(e.key.toLowerCase()=='w') keys.w=false; if(e.key.toLowerCase()=='a') keys.a=false; if(e.key.toLowerCase()=='s') keys.s=false; if(e.key.toLowerCase()=='d') keys.d=false; });
+
+    // Touch move
+    let touchStartX=0, touchStartY=0;
+    document.addEventListener('touchstart', (e)=>{
+        if(e.touches.length==1){ touchStartX=e.touches[0].clientX; touchStartY=e.touches[0].clientY; }
+    });
+    document.addEventListener('touchmove', (e)=>{
+        if(e.touches.length==1){
+            const deltaX = e.touches[0].clientX - touchStartX;
+            const deltaY = e.touches[0].clientY - touchStartY;
+            euler.setFromQuaternion(camera.quaternion);
+            euler.y -= deltaX * 0.005;
+            euler.x -= deltaY * 0.005;
+            euler.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, euler.x));
+            camera.quaternion.setFromEuler(euler);
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }
+    });
+
+    // Botões móveis
+    document.getElementById('up').addEventListener('touchstart',()=>keys.w=true);
+    document.getElementById('up').addEventListener('touchend',()=>keys.w=false);
+    document.getElementById('down').addEventListener('touchstart',()=>keys.s=true);
+    document.getElementById('down').addEventListener('touchend',()=>keys.s=false);
+    document.getElementById('left').addEventListener('touchstart',()=>keys.a=true);
+    document.getElementById('left').addEventListener('touchend',()=>keys.a=false);
+    document.getElementById('right').addEventListener('touchstart',()=>keys.d=true);
+    document.getElementById('right').addEventListener('touchend',()=>keys.d=false);
+
+    animate();
 }
-function hideModal() {
-  customModal.classList.add('hidden');
-  pendingUrl = null;
-  pendingLabel = null;
-  document.body.classList.remove('modal-open');
-  setTimeout(() => renderer.domElement.requestPointerLock(), 10);
+
+function onWindowResize() {
+    camera.aspect = window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
 }
-modalVisit.addEventListener('click', (e) => {
-  e.stopPropagation();
-  if (pendingUrl) window.open(pendingUrl, '_blank');
-  hideModal();
-});
-modalCancel.addEventListener('click', (e) => { e.stopPropagation(); hideModal(); });
-const hoverInfo = document.getElementById('hover-info');
-function updateRaycaster() {
-  raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-  const intersects = raycaster.intersectObjects(interactiveStands);
-  if (intersects.length > 0) {
-    const object = intersects[0].object;
-    if (hoveredObject !== object) {
-      if (hoveredObject) hoveredObject.material.opacity = 0.3;
-      hoveredObject = object;
-      hoveredObject.material.opacity = 0.6;
-      hoverInfo.textContent = `🖱️ Clique para visitar: ${object.userData.label}`;
-      hoverInfo.classList.add('visible');
-    }
-  } else {
-    if (hoveredObject) { hoveredObject.material.opacity = 0.3; hoveredObject = null; }
-    hoverInfo.classList.remove('visible');
-  }
-}
-document.addEventListener('click', (e) => {
-  if (!isPointerLocked || e.button !== 0) return;
-  if (hoveredObject && hoveredObject.userData.url) {
-    showModal(hoveredObject.userData.label, hoveredObject.userData.url);
-  }
-});
-function updateMovement() {
-  if (!isPointerLocked) return;
-  const direction = new THREE.Vector3();
-  const right = new THREE.Vector3();
-  camera.getWorldDirection(direction);
-  direction.y = 0;
-  direction.normalize();
-  right.crossVectors(camera.up, direction).normalize();
-  const velocity = new THREE.Vector3();
-  if (keys.w || keys.arrowup) velocity.add(direction);
-  if (keys.s || keys.arrowdown) velocity.sub(direction);
-  if (keys.a || keys.arrowleft) velocity.add(right);
-  if (keys.d || keys.arrowright) velocity.sub(right);
-  if (velocity.length() > 0) {
-    velocity.normalize().multiplyScalar(moveSpeed);
-    camera.position.add(velocity);
-    camera.position.x = Math.max(-40, Math.min(40, camera.position.x));
-    camera.position.z = Math.max(-30, Math.min(20, camera.position.z));
-  }
-}
+
 function animate() {
-  requestAnimationFrame(animate);
-  updateMovement();
-  updateRaycaster();
-  drawMinimap();
-  renderer.render(scene, camera);
-}
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
-loading.classList.add('hidden');
-const minimapCanvas = document.createElement('canvas');
-minimapCanvas.width = 500;
-minimapCanvas.height = 400;
-minimapCanvas.style.width = '100%';
-minimapCanvas.style.height = '100%';
-minimapCanvas.style.borderRadius = '10px';
-const minimapCtx = minimapCanvas.getContext('2d');
-document.getElementById('minimap').appendChild(minimapCanvas);
+    requestAnimationFrame(animate);
 
-const mapScale = 0.2; // ou 1.0 para mais zoom
-const mapOffsetX = 250; // ajuste fino
-const mapOffsetY = 200; // ajuste fino
+    // Movimento
+    let forward = new THREE.Vector3();
+    camera.getWorldDirection(forward);
+    forward.y = 0;
+    forward.normalize();
+    let right = new THREE.Vector3();
+    right.crossVectors(camera.up, forward).normalize();
 
-function drawMinimap() {
-  minimapCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
-  minimapCtx.fillStyle = '#1a1a1a';
-  minimapCtx.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height);
-  minimapCtx.strokeStyle = '#ff0000';
-  minimapCtx.lineWidth = 3;
-  [-29, -23, -17, -11, -5, 1, 9, 15].forEach(x => {
-    const mapX = mapOffsetX + (x / mapScale);
-    minimapCtx.beginPath();
-    minimapCtx.moveTo(mapX, mapOffsetY + (-20 / mapScale));
-    minimapCtx.lineTo(mapX, mapOffsetY + (10 / mapScale));
-    minimapCtx.stroke();
-  });
-  [-17, -4, 9].forEach(z => {
-    const mapZ = mapOffsetY + (z / mapScale);
-    minimapCtx.beginPath();
-    minimapCtx.moveTo(mapOffsetX + (-35 / mapScale), mapZ);
-    minimapCtx.lineTo(mapOffsetX + (20 / mapScale), mapZ);
-    minimapCtx.stroke();
-  });
-  standPositions.forEach(stand => {
-    const mapX = mapOffsetX + (stand.x / mapScale);
-    const mapZ = mapOffsetY + (stand.z / mapScale);
-    const mapWidth = stand.width / mapScale;
-    const mapDepth = stand.depth / mapScale;
-    minimapCtx.fillStyle = `#${stand.color.toString(16).padStart(6, '0')}`;
-    minimapCtx.fillRect(mapX - mapWidth / 2, mapZ - mapDepth / 2, mapWidth, mapDepth);
-    minimapCtx.strokeStyle = '#ffffff';
-    minimapCtx.lineWidth = 1;
-    minimapCtx.strokeRect(mapX - mapWidth / 2, mapZ - mapDepth / 2, mapWidth, mapDepth);
-    if (mapWidth > 12 && mapDepth > 8) {
-      minimapCtx.fillStyle = '#ffffff';
-      minimapCtx.font = "7px Arial"; //tamanho da fonte minimapa
-      minimapCtx.textAlign = 'center';
-      minimapCtx.textBaseline = 'middle';
-      let displayText = stand.label;
-      if (displayText.length > 12) displayText = displayText.substring(0, 10) + '..';
-      minimapCtx.fillText(displayText, mapX, mapZ);
-    }
-  });
-  minimapCtx.strokeStyle = '#ffff00';
-  minimapCtx.lineWidth = 3;
-  minimapCtx.strokeRect(mapOffsetX + (-40 / mapScale), mapOffsetY + (-30 / mapScale), (80 / mapScale), (60 / mapScale));
-  const playerMapX = mapOffsetX + (camera.position.x / mapScale);
-  const playerMapZ = mapOffsetY + (camera.position.z / mapScale);
-  minimapCtx.fillStyle = '#FF0000';
-  minimapCtx.beginPath();
-  minimapCtx.arc(playerMapX, playerMapZ, 6, 0, Math.PI * 2);
-  minimapCtx.fill();
-  minimapCtx.strokeStyle = '#FFFF00';
-  minimapCtx.lineWidth = 3;
-  minimapCtx.stroke();
-  const direction = new THREE.Vector3();
-  camera.getWorldDirection(direction);
-  const angle = Math.atan2(direction.x, direction.z);
-  minimapCtx.strokeStyle = '#FFFF00';
-  minimapCtx.lineWidth = 3;
-  minimapCtx.beginPath();
-  minimapCtx.moveTo(playerMapX, playerMapZ);
-  minimapCtx.lineTo(playerMapX + Math.sin(angle) * 15, playerMapZ + Math.cos(angle) * 15);
-  minimapCtx.stroke();
-  minimapCtx.fillStyle = '#ffffff';
-  minimapCtx.font = 'bold 12px Arial';
-  minimapCtx.textAlign = 'left';
-  //minimapCtx.fillText('🟨 Limite da Feira', 10, minimapCanvas.height - 45);
-  //minimapCtx.fillStyle = '#ff0000';
-  //minimapCtx.fillText('🟥 Corredores', 10, minimapCanvas.height - 25);
-  //minimapCtx.fillStyle = '#ffff00';
-  minimapCtx.fillText('⭐ Você está aqui', 10, minimapCanvas.height - 5);
+    if(keys.w) camera.position.add(forward.clone().multiplyScalar(velocity));
+    if(keys.s) camera.position.add(forward.clone().multiplyScalar(-velocity));
+    if(keys.a) camera.position.add(right.clone().multiplyScalar(velocity));
+    if(keys.d) camera.position.add(right.clone().multiplyScalar(-velocity));
+
+    renderer.render(scene, camera);
 }
-minimapCanvas.addEventListener('click', (e) => {
-  const rect = minimapCanvas.getBoundingClientRect();
-  const clickX = e.clientX - rect.left;
-  const clickY = e.clientY - rect.top;
-  const worldX = (clickX - mapOffsetX) * mapScale;
-  const worldZ = (clickY - mapOffsetY) * mapScale;
-  const targetX = Math.max(-40, Math.min(40, worldX));
-  const targetZ = Math.max(-30, Math.min(20, worldZ));
-  camera.position.x = targetX;
-  camera.position.z = targetZ;
-});
-minimapCanvas.addEventListener('mousemove', (e) => {
-  const rect = minimapCanvas.getBoundingClientRect();
-  const mouseX = e.clientX - rect.left;
-  const mouseY = e.clientY - rect.top;
-  let foundStand = false;
-  for (const stand of standPositions) {
-    const mapX = mapOffsetX + (stand.x / mapScale);
-    const mapZ = mapOffsetY + (stand.z / mapScale);
-    const mapWidth = stand.width / mapScale;
-    const mapDepth = stand.depth / mapScale;
-    if (mouseX >= mapX - mapWidth / 2 && mouseX <= mapX + mapWidth / 2 && mouseY >= mapZ - mapDepth / 2 && mouseY <= mapZ + mapDepth / 2) {
-      minimapCanvas.title = stand.label;
-      foundStand = true;
-      break;
+
+// Modal clique estande
+document.addEventListener('click', ()=>{
+    if(hoveredObject && hoveredObject.userData.url){
+        const modal = document.getElementById('custom-modal');
+        document.getElementById('modal-label').innerText = hoveredObject.userData.label;
+        document.getElementById('modal-url').innerText = hoveredObject.userData.url;
+        modal.classList.remove('hidden');
     }
-  }
-  if (!foundStand) minimapCanvas.title = 'Clique para teleportar';
 });
-animate();
+
+document.getElementById('modal-cancel').addEventListener('click', ()=>document.getElementById('custom-modal').classList.add('hidden'));
+document.getElementById('modal-visit').addEventListener('click', ()=>{
+    const url = document.getElementById('modal-url').innerText;
+    window.open(url, '_blank');
+    document.getElementById('custom-modal').classList.add('hidden');
+});
+
+// Start button
+document.getElementById('start-btn').addEventListener('click', ()=>{
+    document.getElementById('instructions').classList.add('hidden');
+    document.getElementById('loading').classList.add('hidden');
+    init();
+});
 </script>
 </body>
 </html>
