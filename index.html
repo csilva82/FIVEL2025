@@ -17,6 +17,9 @@ canvas { display: block; }
 #crosshair::after { left: 50%; top: 0; width: 2px; height: 100%; transform: translateX(-50%); }
 #hover-info { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); background: rgba(76,175,80,0.95); color: white; padding: 15px 30px; border-radius: 25px; font-size: 18px; font-weight: bold; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
 #hover-info.visible { opacity: 1; }
+#click-hint { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(255,165,0,0.95); color: white; padding: 20px 40px; border-radius: 15px; font-size: 16px; font-weight: bold; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 500; }
+#click-hint.visible { opacity: 1; animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { transform: translate(-50%,-50%) scale(1); } 50% { transform: translate(-50%,-50%) scale(1.05); } }
 #minimap { 
   position: absolute; 
   top: 20px; 
@@ -76,12 +79,13 @@ canvas { display: block; }
 <div id="ui-overlay">
   <div id="controls-info">
     <h3>⌨️ Controles</h3>
-    <div>WASD - Mover</div>
+    <div>Teclas:W,A,S,D - Mover</div>
     <div>Mouse - Olhar</div>
     <div>Click - Interagir</div>
   </div>
   <div id="crosshair"></div>
   <div id="hover-info">🖱️ Clique para visitar</div>
+  <div id="click-hint">🖱️ Clique aqui para continuar navegando</div>
   <div id="minimap"><div id="minimap-title">🗺️ MAPA</div></div>
 </div>
 <div id="custom-modal" class="hidden">
@@ -111,19 +115,18 @@ canvas { display: block; }
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+const logosOnline = {
+  "FIEMG e SENAI": "https://upload.wikimedia.org/wikipedia/commons/0/05/SENAI_logo_2024.png",
+  "TDM": "http://www.tdm-mg.com.br/images/logo-copy.png",
+  "Trivale": "https://www.trivale.com.br/imagens/logo.png",
+};
+
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x87ceeb);
 scene.fog=new THREE.Fog(0x87ceeb,0,120);
 const camera=new THREE.PerspectiveCamera(75,window.innerWidth/window.innerHeight,0.1,1000);
-camera.position.set(-30, 1.7, -25); //POSIÇÃO INICIALDA CÂMERA
-camera.quaternion.setFromEuler(new THREE.Euler(0,Math.PI,0,'YXZ'));
-
-// Faz a câmera olhar para o centro da feira (ou outro ponto)
-//camera.lookAt(new THREE.Vector3(20, 1.7, -30));
-camera.lookAt(new THREE.Vector3(-40, 1.7, 0));  // olha para o centro
-
-// Define a rotação base (opcional, pode ajustar conforme desejar)
-//camera.quaternion.setFromEuler(new THREE.Euler(0, Math.PI, 0, 'YXZ'));
+camera.position.set(-30, 1.7, -25);
+camera.lookAt(new THREE.Vector3(-40, 1.7, 0));
 const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(window.innerWidth,window.innerHeight);
 renderer.shadowMap.enabled=true;
@@ -147,6 +150,7 @@ fairEdges.position.set(0,0.25,-5);
 scene.add(fairEdges);
 const interactiveStands=[];
 const standPositions=[];
+
 function createStand(x,z,w,d,c,l,u){
 const g=new THREE.Group();
 const base=new THREE.Mesh(new THREE.BoxGeometry(w,0.2,d),new THREE.MeshStandardMaterial({color:0x8B4513}));
@@ -164,88 +168,211 @@ panel.position.set(0,1.5,d/2-0.15);
 panel.userData={interactive:true,url:u,label:l};
 g.add(panel);
 interactiveStands.push(panel);
-standPositions.push({x,z,width:w,depth:d,color:c,label:l});
+standPositions.push({x,z,width:w,depth:d,color:c,label:l,rotation:0});
 const cv=document.createElement('canvas');
 cv.width=512;cv.height=256;
 const ctx=cv.getContext('2d');
 ctx.fillStyle='#fff';
 ctx.fillRect(0,0,512,256);
-ctx.fillStyle='#000';
-ctx.font='bold 40px Arial';
-ctx.textAlign='center';
-ctx.fillText(l,256,128);
+
+function drawTextOnly(){
+  ctx.fillStyle='#fff';
+  ctx.fillRect(0,0,512,256);
+  ctx.fillStyle='#000';
+  ctx.font='bold 40px Arial';
+  ctx.textAlign='center';
+  ctx.fillText(l,256,128);
+}
+
+const logoUrl = logosOnline[l];
 const sign=new THREE.Mesh(new THREE.PlaneGeometry(Math.min(w*0.8,3.5),Math.min(w*0.8,3.5)*0.5),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv)}));
 sign.position.set(0,2.2,d/2-0.25);
 sign.rotation.y=Math.PI;
 g.add(sign);
+
+if(logoUrl){
+  const img=new Image();
+  img.crossOrigin='anonymous';
+  img.onload=()=>{
+    ctx.fillStyle='#fff';
+    ctx.fillRect(0,0,512,256);
+    const maxW=400;
+    const maxH=150;
+    let imgW=img.width;
+    let imgH=img.height;
+    const ratio=Math.min(maxW/imgW,maxH/imgH);
+    imgW*=ratio;
+    imgH*=ratio;
+    ctx.drawImage(img,(512-imgW)/2,(256-imgH)/2-30,imgW,imgH);
+    ctx.fillStyle='#000';
+    ctx.font='bold 24px Arial';
+    ctx.textAlign='center';
+    ctx.fillText(l,256,220);
+    sign.material.map.needsUpdate=true;
+  };
+  img.onerror=()=>{
+    drawTextOnly();
+    sign.material.map.needsUpdate=true;
+  };
+  img.src=logoUrl;
+}else{
+  drawTextOnly();
+}
+
 g.position.set(x,0,z);
 scene.add(g);
 return g;
 }
-const s1=createStand(-15,-25,26,4,0x2c3e50,'FIEMG e SENAI','https://fiemg.com.br');
-s1.rotation.y=Math.PI; // 180° para a direita
 
-const s2=createStand(-32,-20,6,4,0xffe600,'Credenciamento','https://www.fivel.com.br');
-s2.rotation.y =-Math.PI / 2;  // 90° para a esquerda
-
-createStand(-32,-14,3,3,0xff6b6b,'Meta Gil','https://www.metagil.com.br');
-createStand(-32,-10,3,3,0x4ecdc4,'Win Point','https://www.winpoint.com.br');
-createStand(-32,-6,3,3,0xffe66d,'IDET','https://www.idet.com.br');
-createStand(-32,-2,3,3,0x95e1d3,'Stradi','https://www.stradi.com.br');
-createStand(-32,3,3,5,0xf38181,'Davi Araújo','https://www.daviaraujo.com.br');
-createStand(-26,-14,3,3,0xaa96da,'TDM','https://www.tdm.com.br');
-createStand(-26,-10,3,3,0xff9999,'TSZU','https://www.tszu.com.br');
-createStand(-26,-6,3,3,0x66ccff,'TEHAL','https://www.tehal.com.br');
-createStand(-26,-2,3,3,0xffcc66,'ALPHA RÚSSIA','https://www.alpharussia.com.br');
-createStand(-26,2,3,3,0x99ff99,'AMICUS','https://www.amicus.com.br');
-createStand(-20,-14,3,3,0xff66cc,'Trivale','https://www.trivale.com.br');
-createStand(-20,-10,3,3,0xccff66,'Qualitronalt','https://www.qualitronalt.com.br');
-createStand(-20,-6,3,3,0x66ffcc,'GMC','https://www.gmc.com.br');
-createStand(-20,-2,3,3,0xff6699,'Magneton','https://www.magneton.com.br');
-createStand(-20,2,3,3,0x9966ff,'Enterplak','https://www.enterplak.com.br');
-createStand(-20,6,3,3,0x66ff99,'RW','https://www.rw.com.br');
-createStand(-14,-14,3,3,0xffaa66,'Sensodron','https://www.sensodron.com.br');
-createStand(-14,-10,3,3,0xaa66ff,'RIA Galerari','https://www.riagalerari.com.br');
-createStand(-14,-6,3,3,0x66aaff,'ALPHA Pro','https://www.alphapro.com.br');
-createStand(-14,-2,3,3,0xffcc99,'Gráfica','https://www.grafica.com.br');
-createStand(-14,2,3,3,0x99ccff,'Wrathbear','https://www.wrathbear.com.br');
-createStand(-14,6,3,3,0xff9966,'FGM','https://www.fgm.com.br');
-createStand(-8,-14,3,3,0xccaa66,'JK','https://www.jk.com.br');
-createStand(-8,-6,3,9,0x66ccaa,'Sense','https://www.sense.com.br');
-createStand(-2,-1,3,5,0xff6666,'Fractum','https://www.fractum.com.br');
-createStand(-2,5,3,5,0x6666ff,'Novoligo','https://www.novoligo.com.br');
-createStand(6,-10,3,3,0x66ff66,'Ri Beckman','https://www.ribeckman.com.br');
-createStand(6,-6,3,3,0xffff66,'Tamura','https://www.tamura.com.br');
-createStand(6,-2,3,3,0x66ffff,'ABT Techniquitel','https://www.abttechniquitel.com.br');
-createStand(6,2,3,3,0xff66ff,'ACEVALE','https://www.acevale.com.br');
-createStand(12,-10,3,3,0x99aa66,'Linear DEMINI','https://www.lineardemini.com.br');
-createStand(12,-6,3,3,0xaa9966,'Alarmes SRS','https://www.alarmessrs.com.br');
-createStand(12,-2,3,3,0x6699aa,'Sistron','https://www.sistron.com.br');
-createStand(12,2,3,3,0xaa6699,'Triunfo','https://www.triunfo.com.br');
-createStand(12,6,3,3,0x996699,'Panasonic','https://www.panasonic.com.br');
-createStand(18,-6,3,3,0x996666,'Fuji','https://www.fuji.com.br');
-createStand(18,-2,3,3,0x669966,'Eburlas','https://www.eburlas.com.br');
-createStand(18,2,3,3,0x666699,'EPS','https://www.eps.com.br');
-createStand(25,-20,8,6,0x34495e,'ESPAÇO CIDADE','https://www.espacocidadecriativa.com.br');
-createStand(25,-10,8,6,0x16a085,'SINDVEL SEBRAE','https://www.sindvel.com.br');
-createStand(32,0,10,8,0x8e44ad,'Rodadas Negócios','https://www.fivel.com.br/rodadas');
-createStand(-28,12,4,3,0xe74c3c,'FEnix','https://www.fenix.com.br');
-createStand(-24,12,3,3,0x3498db,'Pixel','https://www.pixel.com.br');
-createStand(-20,12,3,3,0xf39c12,'IPESI','https://www.ipesi.com.br');
-createStand(-16,12,3,3,0x2ecc71,'LC','https://www.lc.com.br');
-createStand(-12,12,3,3,0x9b59b6,'AMS','https://www.ams.com.br');
-createStand(-8,12,3,3,0xe67e22,'INATEL','https://www.inatel.br');
-createStand(-4,12,3,3,0x1abc9c,'Tech Lab','https://www.techlab.com.br');
-createStand(0,12,3,3,0xd35400,'NaHub','https://www.nahub.com.br');
-createStand(4,12,3,3,0x27ae60,'Alpha Tech','https://www.alphatech.com.br');
-createStand(10,12,12,3,0x2c3e50,'Incubadoras','https://www.incubadoras.com.br');
-createStand(24,12,12,3,0x34495e,'SINDICATO RURAL','https://www.sindicatorural.com.br');
+const s1=createStand(-15,-26.5,26.5,6,0x2c3e50,'FIEMG e SENAI','https://fiemg.com.br');
+s1.rotation.y=Math.PI;
+standPositions[standPositions.length-1].rotation=Math.PI;
+const s2=createStand(-32,-20,7,3,0xffe600,'Credenciamento','https://www.fivel.com.br');
+s2.rotation.y=-Math.PI/2;
+standPositions[standPositions.length-1].rotation=-Math.PI/2;
+const s3=createStand(21,-26.5,8,6,0x34495e,'ESPAÇO CIDADE CRIATIVA','https://www.espacocidadecriativa.com.br');
+s3.rotation.y=Math.PI;
+standPositions[standPositions.length-1].rotation=Math.PI;
+createStand(21,-15,8,6,0x16a085,'SINDVEL SEBRAE','https://www.sindvel.com.br');
+const s4=createStand(34.5,-20.5,10,18,0x8e44ad,'Rodadas Negócios','https://www.fivel.com.br/rodadas');
+s4.rotation.y=Math.PI;
+standPositions[standPositions.length-1].rotation=Math.PI;
+const s5=createStand(38,9,8,3,0x2ecc71,'PSP Brasil','https://www.eps.com.br');
+s5.rotation.y=Math.PI/2;
+standPositions[standPositions.length-1].rotation=Math.PI/2;
+const s6=createStand(-22,-14,3,3,0xaa96da,'TDM','http://www.tdm-mg.com.br/');
+s6.rotation.y=Math.PI/2;
+standPositions[standPositions.length-1].rotation=Math.PI/2;
+const s7=createStand(-19,-14,3,3,0xff66cc,'Trivale','https://www.trivale.com.br');
+s7.rotation.y=-Math.PI/2;
+standPositions[standPositions.length-1].rotation=-Math.PI/2;
+const s8=createStand(-22,-10,3,3,0xccff66,'Qualitronix','https://www.qualitronalt.com.br');
+s8.rotation.y=Math.PI/2;
+standPositions[standPositions.length-1].rotation=Math.PI/2;
+const s9=createStand(-19,-10,3,3,0xff9999,'TSZU','https://www.tszu.com.br');
+s9.rotation.y=-Math.PI/2;
+standPositions[standPositions.length-1].rotation=-Math.PI/2;
+const s10=createStand(-32,-14,3,3,0xff6b6b,'Metagal','https://www.metagil.com.br');
+s10.rotation.y=-Math.PI/2;
+standPositions[standPositions.length-1].rotation=-Math.PI/2;
+const s11=createStand(-32,-10,3,3,0x4ecdc4,'Winpoint','https://www.winpoint.com.br');
+s11.rotation.y=-Math.PI/2;
+standPositions[standPositions.length-1].rotation=-Math.PI/2;
+const s12=createStand(-32,-6,3,3,0xffe66d,'IDET','https://www.idet.com.br');
+s12.rotation.y=-Math.PI/2;
+standPositions[standPositions.length-1].rotation=-Math.PI/2;
+const s13=createStand(-32,-2,3,3,0x95e1d3,'Sicredi','https://www.sicredi.com.br');
+s13.rotation.y=-Math.PI/2;
+standPositions[standPositions.length-1].rotation=-Math.PI/2;
+const s14=createStand(-32,5,8,3,0xf38181,'Exxer/Exsto','https://www.Exxer.com.br');
+s14.rotation.y=-Math.PI/2;
+standPositions[standPositions.length-1].rotation=-Math.PI/2;
+const s15=createStand(-22,-3.5,8,3,0x66ccff,'Think','https://www.tehal.com.br');
+s15.rotation.y=Math.PI/2;
+standPositions[standPositions.length-1].rotation=Math.PI/2;
+const s16=createStand(-19,-6,3,3,0x66ffcc,'GMC','https://www.gmc.com.br');
+s16.rotation.y=-Math.PI/2;
+standPositions[standPositions.length-1].rotation=-Math.PI/2;
+const s17=createStand(-19,-2,3,3,0xff6699,'Magneton','https://www.magneton.com.br');
+s17.rotation.y=-Math.PI/2;
+standPositions[standPositions.length-1].rotation=-Math.PI/2;
+const s18=createStand(-22,3,3,3,0xffcc66,'ALPHA SUBSEA','https://www.alpharussia.com.br');
+s18.rotation.y=Math.PI/2;
+standPositions[standPositions.length-1].rotation=Math.PI/2;
+const s19=createStand(-19,3,3,3,0x9966ff,'Enterplak','https://www.enterplak.com.br');
+s19.rotation.y=-Math.PI/2;
+standPositions[standPositions.length-1].rotation=-Math.PI/2;
+const s20=createStand(-22,7,3,3,0x99ff99,'AMICUS','https://www.amicus.com.br');
+s20.rotation.y=Math.PI/2;
+standPositions[standPositions.length-1].rotation=Math.PI/2;
+const s21=createStand(-19,7,3,3,0x66ff99,'RW','https://www.rw.com.br');
+s21.rotation.y=-Math.PI/2;
+standPositions[standPositions.length-1].rotation=-Math.PI/2;
+const s22=createStand(-7,-14,3,3,0xffaa66,'Sensodron','https://www.sensodron.com.br');
+s22.rotation.y=Math.PI/2;
+standPositions[standPositions.length-1].rotation=Math.PI/2;
+const s23=createStand(-4,-9,13,3,0xccaa66,'JFL','https://www.jfl.com.br');
+s23.rotation.y=-Math.PI/2;
+standPositions[standPositions.length-1].rotation=-Math.PI/2;
+const s24=createStand(-4,-0.5,3,3,0x66ccaa,'Sense','https://www.sense.com.br');
+s24.rotation.y=-Math.PI/2;
+standPositions[standPositions.length-1].rotation=-Math.PI/2;
+const s25=createStand(-4,5.5,8,3,0xaa66ff,'Leucotron','https://www.leucotron.com.br');
+s25.rotation.y=-Math.PI/2;
+standPositions[standPositions.length-1].rotation=-Math.PI/2;
+const s26=createStand(-7,7.8,3.5,3,0xff9966,'FGM','https://www.fgm.com.br');
+s26.rotation.y=Math.PI/2;
+standPositions[standPositions.length-1].rotation=Math.PI/2;
+const s27=createStand(-7,3.8,4.5,3,0x6666ff,'WatchGuard','https://www.watchguard.com.br');
+s27.rotation.y=Math.PI/2;
+standPositions[standPositions.length-1].rotation=Math.PI/2;
+const s28=createStand(-7,-0.5,3,3,0xffcc99,'Serigráfica','https://www.serigráfica.com.br');
+s28.rotation.y=Math.PI/2;
+standPositions[standPositions.length-1].rotation=Math.PI/2;
+const s29=createStand(-7,-4,3,3,0x66aaff,'ALPHA Pro','https://www.alphapro.com.br');
+s29.rotation.y=Math.PI/2;
+standPositions[standPositions.length-1].rotation=Math.PI/2;
+const s30=createStand(-7,-9,6,3,0x66ff66,'RIA GREEN','https://www.riagreen.com.br');
+s30.rotation.y=Math.PI/2;
+standPositions[standPositions.length-1].rotation=Math.PI/2;
+const s31=createStand(6,8.4,3,3,0xff6666,'Fractum','https://www.fractum.com.br');
+s31.rotation.y=Math.PI/2;
+standPositions[standPositions.length-1].rotation=Math.PI/2;
+const s32=createStand(6,4.4,3,3,0x99ccff,'Nowigo','https://www.wowigo.com.br');
+s32.rotation.y=Math.PI/2;
+standPositions[standPositions.length-1].rotation=Math.PI/2;
+const s33=createStand(16,-6,3,3,0xffff66,'Tamura','https://www.tamura.com.br');
+s33.rotation.y=Math.PI;
+standPositions[standPositions.length-1].rotation=Math.PI;
+const s34=createStand(12,-6,3,3,0x996699,'Polimericos','https://www.polimericos.com.br');
+s34.rotation.y=Math.PI;
+standPositions[standPositions.length-1].rotation=Math.PI;
+const s35=createStand(20,-6,3,3,0x99aa66,'Linear DEMINI','https://www.lineardemini.com.br');
+s35.rotation.y=Math.PI;
+standPositions[standPositions.length-1].rotation=Math.PI;
+const s36=createStand(24,-6,3,3,0xaa9966,'Alarmes SRS','https://www.alarmessrs.com.br');
+s36.rotation.y=Math.PI;
+standPositions[standPositions.length-1].rotation=Math.PI;
+const s37=createStand(14,8,6,3,0x6699aa,'Rocka Solutions','https://www.rockasolutions.com.br');
+s37.rotation.y=Math.PI/2;
+standPositions[standPositions.length-1].rotation=Math.PI/2;
+const s38=createStand(17.5,9.5,3,3,0x66ffff,'ACEVALE','https://www.acervale.com.br');
+s38.rotation.y=Math.PI;
+standPositions[standPositions.length-1].rotation=Math.PI;
+const s40=createStand(21.5,9.5,3,3,0xd35400,'Panasonic','https://www.panasonic.com.br');
+s40.rotation.y=Math.PI;
+standPositions[standPositions.length-1].rotation=Math.PI;
+createStand(17.5,6.5,3,3,0x669966,'AGT Technologies','https://www.agttechnologies.com.br');
+createStand(21.6,6.5,3,3,0xe74c3c,'Biotron','https://www.biotron.com.br');
+const s43=createStand(38,16,3,4,0xff66ff,'DL','https://www.dl.com.br');
+s43.rotation.y=Math.PI/2;
+standPositions[standPositions.length-1].rotation=Math.PI/2;
+const s44=createStand(29,6.5,3,3,0xaa6699,'Triunfo','https://www.triunfo.com.br');
+s44.rotation.y=Math.PI/2;
+standPositions[standPositions.length-1].rotation=Math.PI/2;
+const s45=createStand(29,10,3,3,0xf39c12,'Elantas','https://www.elantas.com.br');
+s45.rotation.y=Math.PI/2;
+standPositions[standPositions.length-1].rotation=Math.PI/2;
+const s46=createStand(32,6.5,3,3,0x996666,'Fuji','https://www.fuji.com.br');
+s46.rotation.y=-Math.PI/2;
+standPositions[standPositions.length-1].rotation=-Math.PI/2;
+const s47=createStand(32,10,3,3,0x666699,'EPS','https://www.eps.com.br');
+s47.rotation.y=-Math.PI/2;
+standPositions[standPositions.length-1].rotation=-Math.PI/2;
+createStand(-24,20,3,3,0x3498db,'Pixel','https://www.pixel.com.br');
+createStand(-12,20,3,3,0x9b59b6,'AMS','https://www.ams.com.br');
+createStand(-8,20,3,3,0xe67e22,'INATEL','https://www.inatel.br');
+createStand(-4,20,3,3,0x1abc9c,'Tech Lab','https://www.techlab.com.br');
+createStand(4,20,3,3,0x27ae60,'Alpha Tech','https://www.alphatech.com.br');
+createStand(15,20,15,3,0x2c3e50,'Incubadoras','https://www.incubadoras.com.br');
+createStand(32,20,15,3,0x34495e,'SINDICATO RURAL','https://www.sindicatorural.com.br');
 const raycaster=new THREE.Raycaster();
 let hoveredObject=null;
 const keys={w:false,a:false,s:false,d:false};
 let isPointerLocked=false;
 const euler=new THREE.Euler(0,0,0,'YXZ');
 const isMobile=/Android|webOS|iPhone|iPad|iPod/i.test(navigator.userAgent)||window.innerWidth<=768;
+
 document.getElementById('start-btn').addEventListener('click',()=>{
 document.getElementById('instructions').classList.add('hidden');
 if(isMobile){
@@ -256,9 +383,35 @@ isPointerLocked=true;
 renderer.domElement.requestPointerLock();
 }
 });
+
 document.addEventListener('pointerlockchange',()=>{
-if(!isMobile)isPointerLocked=document.pointerLockElement===renderer.domElement;
+if(!isMobile){
+isPointerLocked=document.pointerLockElement===renderer.domElement;
+if(!isPointerLocked && modal.classList.contains('hidden')){
+document.getElementById('click-hint').classList.add('visible');
+}else{
+document.getElementById('click-hint').classList.remove('visible');
+}
+}
 });
+
+renderer.domElement.addEventListener('click',()=>{
+if(!isMobile && !isPointerLocked && modal.classList.contains('hidden')){
+document.getElementById('click-hint').classList.remove('visible');
+renderer.domElement.requestPointerLock();
+}
+});
+
+document.addEventListener('visibilitychange',()=>{
+if(!document.hidden && !isMobile){
+setTimeout(()=>{
+if(modal.classList.contains('hidden') && !isPointerLocked){
+document.getElementById('click-hint').classList.add('visible');
+}
+},500);
+}
+});
+
 document.addEventListener('mousemove',(e)=>{
 if(!isPointerLocked||isMobile)return;
 euler.setFromQuaternion(camera.quaternion);
@@ -267,6 +420,7 @@ euler.x-=e.movementY*0.002;
 euler.x=Math.max(-Math.PI/2,Math.min(Math.PI/2,euler.x));
 camera.quaternion.setFromEuler(euler);
 });
+
 document.querySelectorAll('.control-btn').forEach(btn=>{
 btn.addEventListener('touchstart',(e)=>{
 e.preventDefault();
@@ -277,6 +431,7 @@ e.preventDefault();
 keys[btn.getAttribute('data-key')]=false;
 });
 });
+
 const lookPad=document.getElementById('look-pad');
 let touchId=null,centerX=0,centerY=0;
 lookPad.addEventListener('touchstart',(e)=>{
@@ -315,6 +470,7 @@ document.querySelector('.look-indicator').style.transform='translate(-50%,-50%)'
 }
 }
 });
+
 document.addEventListener('keydown',(e)=>{
 const k=e.key.toLowerCase();
 if(keys.hasOwnProperty(k))keys[k]=true;
@@ -323,6 +479,7 @@ document.addEventListener('keyup',(e)=>{
 const k=e.key.toLowerCase();
 if(keys.hasOwnProperty(k))keys[k]=false;
 });
+
 const modal=document.getElementById('custom-modal');
 let pendingUrl=null;
 function showModal(l,u){
@@ -332,16 +489,25 @@ document.getElementById('modal-url').textContent=u;
 modal.classList.remove('hidden');
 if(document.pointerLockElement)document.exitPointerLock();
 }
+
 function hideModal(){
 modal.classList.add('hidden');
 pendingUrl=null;
-if(!isMobile)setTimeout(()=>renderer.domElement.requestPointerLock(),10);
+if(!isMobile){
+setTimeout(()=>{
+if(!document.hidden){
+renderer.domElement.requestPointerLock();
 }
+},300);
+}
+}
+
 document.getElementById('modal-visit').addEventListener('click',()=>{
 if(pendingUrl)window.open(pendingUrl,'_blank');
 hideModal();
 });
 document.getElementById('modal-cancel').addEventListener('click',hideModal);
+
 const hoverInfo=document.getElementById('hover-info');
 function updateRaycaster(){
 raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
@@ -360,12 +526,14 @@ if(hoveredObject){hoveredObject.material.opacity=0.3;hoveredObject=null;}
 hoverInfo.classList.remove('visible');
 }
 }
+
 document.addEventListener('click',()=>{
 if(!isPointerLocked)return;
 if(hoveredObject&&hoveredObject.userData.url){
 showModal(hoveredObject.userData.label,hoveredObject.userData.url);
 }
 });
+
 function updateMovement(){
 if(!isPointerLocked)return;
 const dir=new THREE.Vector3();
@@ -386,46 +554,70 @@ camera.position.x=Math.max(-40,Math.min(40,camera.position.x));
 camera.position.z=Math.max(-30,Math.min(20,camera.position.z));
 }
 }
+
 const minimapCanvas=document.createElement('canvas');
-minimapCanvas.width=500; //tamnaho minimapa
-minimapCanvas.height=400; //tamnaho minimapa
+minimapCanvas.width=600;
+minimapCanvas.height=400;
 minimapCanvas.style.width='100%';
 minimapCanvas.style.height='100%';
 const ctx=minimapCanvas.getContext('2d');
 document.getElementById('minimap').appendChild(minimapCanvas);
+
 function drawMinimap(){
-ctx.clearRect(0,0,500,400);
+ctx.clearRect(0,0,600,400);
 ctx.fillStyle='#1a1a1a';
-ctx.fillRect(0,0,10000,800);
+ctx.fillRect(0,0,600,400);
+const scale = 5;
+const offsetX = 300;
+const offsetY = 200;
 ctx.strokeStyle='#ff0';
 ctx.lineWidth=3;
-ctx.strokeRect(50,100,400,300);
+const fairWidth = 80 * scale;
+const fairHeight = 60 * scale;
+ctx.strokeRect(offsetX - fairWidth/2, offsetY - fairHeight/2, fairWidth, fairHeight);
 standPositions.forEach(s=>{
-const mx=250+(s.x*5);
-const mz=250+(s.z*5);
+const mx = offsetX + (s.x * scale);
+const mz = offsetY + (s.z * scale);
+ctx.save();
+ctx.translate(mx, mz);
+ctx.rotate(s.rotation || 0);
 ctx.fillStyle=`#${s.color.toString(16).padStart(6,'0')}`;
-ctx.fillRect(mx-s.width*2.5,mz-s.depth*2.5,s.width*5,s.depth*5);
-// Desenha o nome do stand
-        ctx.fillStyle = '#fff';
-        ctx.font = '12px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(s.label, mx, mz - s.depth*2.5 - 4); // ajusta acima do retângulo
-        
+ctx.fillRect(-s.width*scale/2, -s.depth*scale/2, s.width*scale, s.depth*scale);
+ctx.strokeStyle='#000';
+ctx.lineWidth=1;
+ctx.strokeRect(-s.width*scale/2, -s.depth*scale/2, s.width*scale, s.depth*scale);
+ctx.restore();
 });
-const px=250+(camera.position.x*5);
-const pz=250+(camera.position.z*5);
+const px = offsetX + (camera.position.x * scale);
+const pz = offsetY + (camera.position.z * scale);
 ctx.fillStyle='#f00';
 ctx.beginPath();
-ctx.arc(px,pz,6,0,Math.PI*2);
+ctx.arc(px, pz, 8, 0, Math.PI*2);
 ctx.fill();
+ctx.strokeStyle='#fff';
+ctx.lineWidth=2;
+ctx.stroke();
+const dir = new THREE.Vector3();
+camera.getWorldDirection(dir);
+ctx.strokeStyle='#fff';
+ctx.lineWidth=3;
+ctx.beginPath();
+ctx.moveTo(px, pz);
+ctx.lineTo(px + dir.x * 20, pz + dir.z * 20);
+ctx.stroke();
 }
+
 minimapCanvas.addEventListener('click',(e)=>{
 const r=minimapCanvas.getBoundingClientRect();
-const x=(e.clientX-r.left)/r.width*500;
+const x=(e.clientX-r.left)/r.width*600;
 const y=(e.clientY-r.top)/r.height*400;
-camera.position.x=Math.max(-40,Math.min(40,(x-250)/5));
-camera.position.z=Math.max(-30,Math.min(20,(y-250)/5));
+const scale = 5;
+const offsetX = 300;
+const offsetY = 200;
+camera.position.x=Math.max(-40,Math.min(40,(x-offsetX)/scale));
+camera.position.z=Math.max(-30,Math.min(20,(y-offsetY)/scale));
 });
+
 function animate(){
 requestAnimationFrame(animate);
 updateMovement();
@@ -433,11 +625,13 @@ updateRaycaster();
 drawMinimap();
 renderer.render(scene,camera);
 }
+
 window.addEventListener('resize',()=>{
 camera.aspect=window.innerWidth/window.innerHeight;
 camera.updateProjectionMatrix();
 renderer.setSize(window.innerWidth,window.innerHeight);
 });
+
 document.getElementById('loading').classList.add('hidden');
 animate();
 </script>
