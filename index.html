@@ -39,6 +39,33 @@
   #modal-visit:hover { background: #45a049; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4); }
   #modal-cancel { background: rgba(255, 255, 255, 0.2); color: white; }
   #modal-cancel:hover { background: rgba(255, 255, 255, 0.3); transform: translateY(-2px); }
+  
+  /* ================= BOTÕES MÓVEL ================= */
+#mobile-controls {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  width: 120px;
+  height: 120px;
+  gap: 10px;
+  pointer-events: all;
+  z-index: 100;
+}
+#mobile-controls button {
+  flex: 1 1 40px;
+  background: rgba(76, 175, 80, 0.5);
+  border: none;
+  color: white;
+  font-size: 20px;
+  border-radius: 10px;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+#mobile-controls button:active { opacity: 1; }
+  
+  
   </style>
   </head>
   <body>
