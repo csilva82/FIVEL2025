@@ -179,10 +179,25 @@ document.addEventListener('keyup', e=>{
 
 // ==================== Mobile Buttons ====================
 ['up','down','left','right'].forEach(dir=>{
-  const btn=document.getElementById(dir);
-  btn.addEventListener('touchstart',()=>{ keys[dir==='up'?'w':dir==='down'?'s':dir==='left'?'a':'d']=true; });
-  btn.addEventListener('touchend',()=>{ keys[dir==='up'?'w':dir==='down'?'s':dir==='left'?'a':'d']=false; });
-  btn.addEventListener('touchcancel',()=>{ keys[dir==='up'?'w':dir==='down'?'s':dir==='left'?'a':'d']=false; });
+  const btn = document.getElementById(dir);
+  btn.addEventListener('touchstart', ()=>{ 
+    if(dir==='up') keys.w = true;      // mover para frente
+    if(dir==='down') keys.s = true;    // mover para trás
+    if(dir==='left') keys.a = true;    // mover para esquerda
+    if(dir==='right') keys.d = true;   // mover para direita
+  });
+  btn.addEventListener('touchend', ()=>{ 
+    if(dir==='up') keys.w = false;     
+    if(dir==='down') keys.s = false;   
+    if(dir==='left') keys.a = false;   
+    if(dir==='right') keys.d = false;  
+  });
+  btn.addEventListener('touchcancel', ()=>{ 
+    if(dir==='up') keys.w = false;     
+    if(dir==='down') keys.s = false;   
+    if(dir==='left') keys.a = false;   
+    if(dir==='right') keys.d = false;  
+  });
 });
 
 // ==================== Movimentação ====================
