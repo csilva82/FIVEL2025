@@ -404,6 +404,7 @@ renderer.domElement.requestPointerLock();
 }
 });
 
+// CORREÇÃO: Simplificar a lógica do pointerlock para mobile
 document.addEventListener('pointerlockchange',()=>{
 if(!isMobile){
 isPointerLocked=document.pointerLockElement===renderer.domElement;
@@ -415,6 +416,7 @@ document.getElementById('click-hint').classList.remove('visible');
 }
 });
 
+// CORREÇÃO: Para mobile, não usar pointerlock
 renderer.domElement.addEventListener('click',()=>{
 if(!isMobile && !isPointerLocked && modal.classList.contains('hidden')){
 document.getElementById('click-hint').classList.remove('visible');
@@ -510,17 +512,23 @@ if(keys.hasOwnProperty(k))keys[k]=false;
 
 const modal=document.getElementById('custom-modal');
 let pendingUrl=null;
+// CORREÇÃO: Função showModal simplificada para mobile
 function showModal(l,u){
 pendingUrl=u;
 document.getElementById('modal-text').textContent=`Visitar ${l}?`;
 document.getElementById('modal-url').textContent=u;
 modal.classList.remove('hidden');
-if(document.pointerLockElement)document.exitPointerLock();
+// Não fazer exitPointerLock no mobile
+if(!isMobile && document.pointerLockElement){
+document.exitPointerLock();
+}
 }
 
+// CORREÇÃO: Função hideModal simplificada para mobile
 function hideModal(){
 modal.classList.add('hidden');
 pendingUrl=null;
+// Não fazer requestPointerLock no mobile
 if(!isMobile){
 setTimeout(()=>{
 if(!document.hidden){
@@ -555,15 +563,17 @@ hoverInfo.classList.remove('visible');
 }
 }
 
+// CORREÇÃO: Listener de clique para desktop
 document.addEventListener('click',()=>{
-if(!isPointerLocked)return;
+if(!isPointerLocked || isMobile) return;
 if(hoveredObject&&hoveredObject.userData.url){
 showModal(hoveredObject.userData.label,hoveredObject.userData.url);
 }
 });
 
+// CORREÇÃO: Atualizar movimento sem verificar pointerlock no mobile
 function updateMovement(){
-if(!isPointerLocked)return;
+if(isMobile || isPointerLocked){
 const dir=new THREE.Vector3();
 camera.getWorldDirection(dir);
 dir.y=0;
@@ -580,6 +590,7 @@ vel.normalize().multiplyScalar(0.15);
 camera.position.add(vel);
 camera.position.x=Math.max(-40,Math.min(40,camera.position.x));
 camera.position.z=Math.max(-30,Math.min(20,camera.position.z));
+}
 }
 }
 
